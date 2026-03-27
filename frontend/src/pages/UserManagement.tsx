@@ -1,6 +1,6 @@
-"""
+/*
 权限管理页面 - 用户管理
-"""
+*/
 
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Switch, Space, Tag, message, Popconfirm } from 'antd';
@@ -20,7 +20,7 @@ const UserManagement: React.FC = () => {
     setLoading(true);
     try {
       const res = await userService.getUsers();
-      setUsers(res.data.items || []);
+      setUsers(res || []);
     } catch (error) {
       message.error('加载用户列表失败');
     } finally {

@@ -67,10 +67,12 @@ const Documents: React.FC = () => {
   const fetchDocuments = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_BASE}/documents`);
-      setDocuments(res.data.documents);
+      const res = await axios.get(`${API_BASE}/documents`, { timeout: 5000 });
+      setDocuments(res.data.documents || []);
     } catch (e) {
-      message.error('获取文档列表失败');
+      // API不可用时使用空列表优雅降级
+      console.warn('API不可用，显示空列表');
+      setDocuments([]);
     } finally {
       setLoading(false);
     }

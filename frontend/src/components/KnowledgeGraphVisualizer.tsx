@@ -1,6 +1,6 @@
-"""
+/*
 知识图谱可视化组件 - D3.js Force Directed Graph
-"""
+*/
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
