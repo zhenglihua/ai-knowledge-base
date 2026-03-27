@@ -1,0 +1,263 @@
+{
+  "start_time": "2026-03-26T12:43:14.701833",
+  "tests": [
+    {
+      "name": "根端点",
+      "endpoint": "/",
+      "method": "GET",
+      "status": "passed",
+      "status_code": 200,
+      "response_time_ms": 2,
+      "response": {
+        "message": "AI知识库API服务运行中",
+        "version": "2.0.0"
+      }
+    },
+    {
+      "name": "健康检查",
+      "endpoint": "/api/health",
+      "method": "GET",
+      "status": "passed",
+      "status_code": 200,
+      "response_time_ms": 2,
+      "response": {
+        "status": "ok",
+        "version": "2.0.0",
+        "timestamp": "2026-03-26T12:43:14.711015",
+        "database": "error: Textual SQL expression 'SELECT 1' should be explicitly declared as text('SELECT 1')",
+        "stats": {
+          "documents": 2,
+          "conversations": 1,
+          "messages": 2
+        }
+      }
+    },
+    {
+      "name": "获取文档列表",
+      "endpoint": "/api/documents",
+      "method": "GET",
+      "status": "passed",
+      "status_code": 200,
+      "response_time_ms": 1,
+      "response": {
+        "total": 2,
+        "limit": 100,
+        "offset": 0,
+        "documents": [
+          {
+            "id": "8937d7db-ba2a-4a64-8cd4-dcf545f110fa",
+            "filename": "设备故障处理.txt",
+            "title": "设备故障处理",
+            "category": "工艺文档",
+            "tags": "",
+            "file_type": "txt",
+            "file_size": 768,
+            "created_at": "2026-03-25T08:47:40.186369",
+            "status": "active"
+          },
+          {
+            "id": "dc9afbcc-2565-4e55-a252-51204e52cc92",
+            "filename": "半导体工艺基础.txt",
+            "title": "半导体工艺基础",
+            "category": "工艺文档",
+            "tags": "",
+            "file_type": "txt",
+            "file_size": 1163,
+            "created_at": "2026-03-25T08:47:40.171890",
+            "status": "active"
+          }
+        ]
+      }
+    },
+    {
+      "name": "获取文档详情 (ID: 8937d7db...)",
+      "endpoint": "/api/documents/8937d7db-ba2a-4a64-8cd4-dcf545f110fa",
+      "method": "GET",
+      "status": "passed",
+      "status_code": 200,
+      "response_time_ms": 1,
+      "response": {
+        "id": "8937d7db-ba2a-4a64-8cd4-dcf545f110fa",
+        "filename": "设备故障处理.txt",
+        "title": "设备故障处理",
+        "content": "# 设备故障处理手册\n\n## 光刻机常见故障\n\n### 故障代码 E-203\n**现象**: 曝光能量不足\n**原因**:\n1. 光源老化\n2. 光路污染\n3. 能量传感器故障\n\n**处理步骤**:\n1. 检查光源使用时间，超过2000小时需更换\n2. 清洁光路镜片\n3. 校准能量传感器\n\n### 故障代码 E-105\n**现象**: 对准精度超差\n**原因**:\n1. 温度波动\n2. 振动干扰\n3. 对准标记损坏\n\n**处理步骤**:\n1. 检查环境温度是否在23±0.5℃\n2. 检查设备减震状态\n3. 检查晶圆对准标记\n\n## 刻蚀机常见故障\n\n### 故障代码 A-301\n**现象**: 真空度不足\n**原因**:\n1. 真空泵故障\n2. 密封圈老化\n3. 气体泄漏\n\n**处理步骤**:\n1. 检查真空泵运行状态\n2. 更换密封圈\n3. 检漏并修复\n",
+        "category": "工艺文档",
+        "tags": "",
+        "file_type": "txt",
+        "file_size": 768,
+        "created_at": "2026-03-25T08:47:40.186369",
+        "updated_at": "2026-03-25T08:47:40.186372"
+      }
+    },
+    {
+      "name": "搜索文档",
+      "endpoint": "/api/search",
+      "method": "POST",
+      "status": "passed",
+      "status_code": 200,
+      "response_time_ms": 35,
+      "response": {
+        "keyword": "半导体",
+        "total": 2,
+        "results": [
+          {
+            "chunk_id": "258c0d8f-2626-4820-b6ab-d8493f5dde05_chunk_0",
+            "doc_id": "258c0d8f-2626-4820-b6ab-d8493f5dde05",
+            "content": "半导体制造工艺 - 光刻技术\n\n光刻是半导体制造中最关键的步骤之一。它使用紫外光通过掩膜版将电路图案转移到硅片上。\n\n关键参数：\n- 波长：193nm（深紫外）或13.5nm（极紫外）\n- 分辨率：决定最小特征尺寸\n- 焦深：影响工艺窗口\n\n光刻胶的选择也很重要，分为正胶和负胶两种。",
+            "metadata": {
+              "title": "光刻技术文档",
+              "category": "制造工艺"
+            },
+            "score": 0.6150640570048338,
+            "rank": 1
+          },
+          {
+            "chunk_id": "c30b4754-dee9-4cab-8faa-c97c3ac22ef7_chunk_0",
+            "doc_id": "c30b4754-dee9-4cab-8faa-c97c3ac22ef7",
+            "content": "半导体制造工艺 - 刻蚀技术\n\n刻蚀是将光刻定义的图案转移到硅片中的过程。主要有两种刻蚀方法：\n\n1. 湿法刻蚀：使用化学溶液\n   - 优点：选择性好，成本低\n   - 缺点：各向同性，不适合精细图案\n\n2. 干法刻蚀：使用等离子体\n   - 优点：各向异性，适合精细图案\n   - 缺点：选择性较差\n\n刻蚀速率、选择性和均匀性是关键指标。",
+            "metadata": {
+              "title": "刻蚀技术文档",
+              "category": "制造工艺"
+            },
+            "score": 0.5812701431494339,
+            "rank": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "AI问答",
+      "endpoint": "/api/chat",
+      "method": "POST",
+      "status": "passed",
+      "status_code": 200,
+      "response_time_ms": 13,
+      "response": {
+        "answer": "根据知识库资料：\n\n1. 【文档1】半导体制造工艺 - 光刻技术\n\n光刻是半导体制造中最关键的步骤之一\n\n2. 它使用紫外光通过掩膜版将电路图案转移到硅片上\n\n3. 关键参数：\n- 波长：193nm（深紫外）或13.5nm（极紫外）\n- 分辨率：决定最小特征尺寸\n- 焦深：影响工艺窗口\n\n光刻胶的选择也很重要，分为正胶和负胶两种\n\n4. 【文档2】半导体制造工艺 - 刻蚀技术\n\n刻蚀是将光刻定义的图案转移到硅片中的过程\n\n5. 主要有两种刻蚀方法：\n\n1. 湿法刻蚀：使用化学溶液\n   - 优点：选择性好，成本低\n   - 缺点：各向同性，不适合精细图案\n\n2. 干法刻蚀：使用等离子体\n   - 优点：各向异性，适合精细图案\n   - 缺点：选择性较差\n\n刻蚀速率、选择性和均匀性是关键指标\n\n（注：当前使用本地模式，建议使用OpenAI API获取更智能的回答）",
+        "sources": [
+          {
+            "doc_id": "258c0d8f-2626-4820-b6ab-d8493f5dde05",
+            "content": "半导体制造工艺 - 光刻技术\n\n光刻是半导体制造中最关键的步骤之一。它使用紫外光通过掩膜版将电路图案转移到硅片上。\n\n关键参数：\n- 波长：193nm（深紫外）或13.5nm（极紫外）\n- 分辨率：决定最小特征尺寸\n- 焦深：影响工艺窗口\n\n光刻胶的选择也很重要，分为正胶和负胶两种。",
+            "score": 0.5410804672801498,
+            "rank": 1,
+            "metadata": {
+              "title": "光刻技术文档",
+              "category": "制造工艺"
+            }
+          },
+          {
+            "doc_id": "c30b4754-dee9-4cab-8faa-c97c3ac22ef7",
+            "content": "半导体制造工艺 - 刻蚀技术\n\n刻蚀是将光刻定义的图案转移到硅片中的过程。主要有两种刻蚀方法：\n\n1. 湿法刻蚀：使用化学溶液\n   - 优点：选择性好，成本低\n   - 缺点：各向同性，不适合精细图案\n\n2. 干法刻蚀：使用等离子体\n   - 优点：各向异性，适合精细图案\n   - 缺点：选择性较差\n\n刻蚀速率、选择性和均匀性是关键指标。",
+            "score": 0.480810709543502,
+            "rank": 2,
+            "metadata": {
+              "title": "刻蚀技术文档",
+              "category": "制造工艺"
+            }
+          }
+        ],
+        "conversation_id": "8bedb088-65b9-4225-bc54-1044ac79a450",
+        "message_id": "be31ba43-50ed-4e1d-9eab-748b57cd5528",
+        "latency_ms": 11
+      }
+    },
+    {
+      "name": "获取对话列表",
+      "endpoint": "/api/conversations",
+      "method": "GET",
+      "status": "passed",
+      "status_code": 200,
+      "response_time_ms": 2,
+      "response": {
+        "total": 2,
+        "limit": 20,
+        "offset": 0,
+        "conversations": [
+          {
+            "id": "8bedb088-65b9-4225-bc54-1044ac79a450",
+            "title": "什么是半导体？",
+            "user_id": "anonymous",
+            "created_at": "2026-03-26T12:43:14.754119",
+            "updated_at": "2026-03-26T12:43:14.765101",
+            "message_count": 2
+          },
+          {
+            "id": "da1c776b-d135-4c22-a8fb-03ce12b3e69e",
+            "title": "什么是半导体？",
+            "user_id": "anonymous",
+            "created_at": "2026-03-26T12:41:20.298236",
+            "updated_at": "2026-03-26T12:41:20.374939",
+            "message_count": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "获取仪表盘统计",
+      "endpoint": "/api/stats/dashboard",
+      "method": "GET",
+      "status": "passed",
+      "status_code": 200,
+      "response_time_ms": 6,
+      "response": {
+        "documents": {
+          "total": 2,
+          "active": 2,
+          "today_uploads": 0,
+          "categories": [
+            {
+              "name": "工艺文档",
+              "count": 2
+            }
+          ]
+        },
+        "chats": {
+          "total": 2,
+          "today": 2,
+          "avg_latency_ms": 44.0,
+          "active_conversations": 2
+        },
+        "updated_at": "2026-03-26T12:43:14.776042"
+      }
+    },
+    {
+      "name": "获取搜索趋势",
+      "endpoint": "/api/stats/search-trends",
+      "method": "GET",
+      "status": "passed",
+      "status_code": 200,
+      "response_time_ms": 2,
+      "response": {
+        "period_days": 7,
+        "total_queries": 2,
+        "top_keywords": [
+          {
+            "keyword": "什么是半导体？",
+            "count": 2
+          }
+        ],
+        "recent_queries": [
+          {
+            "query": "什么是半导体？",
+            "created_at": "2026-03-26T12:43:14.755216"
+          },
+          {
+            "query": "什么是半导体？",
+            "created_at": "2026-03-26T12:41:20.300111"
+          }
+        ]
+      }
+    },
+    {
+      "name": "前端首页访问",
+      "endpoint": "http://localhost:3000",
+      "status": "passed",
+      "status_code": 200
+    }
+  ],
+  "passed": 10,
+  "failed": 0,
+  "end_time": "2026-03-26T12:43:14.780436",
+  "total": 10,
+  "success_rate": "100.0%"
+}

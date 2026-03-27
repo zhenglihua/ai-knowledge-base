@@ -1,0 +1,15 @@
+.entity-search-page {
+  padding: 24px;
+}
+
+.entity-search-page .page-header {
+  margin-bottom: 24px;
+}
+
+.entity-search-page .page-header h2 {
+  margin: 0;
+}
+
+.entity-detail-container {
+  padding: 24px;
+}

@@ -1,0 +1,62 @@
+.graph-management-page {
+  padding: 24px;
+}
+
+.graph-management-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.distribution-card {
+  border-radius: 12px;
+}
+
+.distribution-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.distribution-bar {
+  flex: 1;
+  height: 8px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.distribution-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.distribution-count {
+  min-width: 40px;
+  text-align: right;
+  font-weight: 500;
+  color: #595959;
+}
+
+.operations-card {
+  border-radius: 12px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.operation-item {
+  padding: 4px 0;
+}

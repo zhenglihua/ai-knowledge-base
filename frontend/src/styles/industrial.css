@@ -1,0 +1,621 @@
+/* 工业风紧凑主题 - Industrial Compact Theme */
+
+/* ========== 基础变量 ========== */
+:root {
+  --industrial-bg: #0d1117;
+  --industrial-bg-secondary: #161b22;
+  --industrial-bg-tertiary: #21262d;
+  --industrial-border: #30363d;
+  --industrial-text: #c9d1d9;
+  --industrial-text-secondary: #8b949e;
+  --industrial-accent: #f0883e;
+  --industrial-accent-secondary: #58a6ff;
+  --industrial-danger: #f85149;
+  --industrial-success: #3fb950;
+  --industrial-warning: #d29922;
+}
+
+/* ========== 全局重置 ========== */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Roboto', monospace;
+  background-color: var(--industrial-bg);
+  color: var(--industrial-text);
+}
+
+/* ========== 页面进入动画 - 简化为淡入 ========== */
+.page-enter-active {
+  animation: pageEnter 0.15s ease-out;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ========== 悬停效果 - 简化 ========== */
+.hover-card {
+  transition: border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.hover-card:hover {
+  border-color: var(--industrial-accent);
+}
+
+/* ========== 消息气泡 - 无动画 ========== */
+.message-enter {
+  /* 移除动画 */
+}
+
+/* ========== 流式输出光标 ========== */
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  background-color: var(--industrial-accent);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursorBlink 0.8s infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* ========== 脉冲动画 - 保留但简化 ========== */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.pulse-animation {
+  animation: pulse 1.5s infinite;
+}
+
+/* ========== 加载动画 ========== */
+@keyframes loading {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-spin {
+  animation: loading 0.8s linear infinite;
+}
+
+/* ========== 列表项进入 - 无动画 ========== */
+.list-item-enter {
+  /* 移除动画 */
+}
+
+/* ========== 滚动条 - 工业风 ========== */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--industrial-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--industrial-border);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--industrial-text-secondary);
+}
+
+/* ========== 选中文字 ========== */
+::selection {
+  background: var(--industrial-accent);
+  color: var(--industrial-bg);
+}
+
+/* ========== Ant Design 组件覆盖 - 工业风 ========== */
+
+/* 布局 */
+.ant-layout {
+  background: var(--industrial-bg) !important;
+}
+
+.ant-layout-sider {
+  background: var(--industrial-bg-secondary) !important;
+  border-right: 1px solid var(--industrial-border);
+}
+
+/* 卡片 - 紧凑直角 */
+.ant-card {
+  background: var(--industrial-bg-secondary);
+  border: 1px solid var(--industrial-border);
+  border-radius: 2px;
+}
+
+.ant-card-head {
+  background: var(--industrial-bg-tertiary);
+  border-bottom: 1px solid var(--industrial-border);
+  border-radius: 2px 2px 0 0;
+  padding: 8px 12px;
+  min-height: 36px;
+}
+
+.ant-card-body {
+  padding: 12px;
+}
+
+/* 按钮 - 工业风 */
+.ant-btn {
+  border-radius: 2px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.ant-btn-primary {
+  background: var(--industrial-accent);
+  border-color: var(--industrial-accent);
+}
+
+.ant-btn-primary:hover {
+  background: #ff9f5a;
+  border-color: #ff9f5a;
+}
+
+.ant-btn-default {
+  background: var(--industrial-bg-tertiary);
+  border-color: var(--industrial-border);
+  color: var(--industrial-text);
+}
+
+.ant-btn-default:hover {
+  border-color: var(--industrial-accent);
+  color: var(--industrial-accent);
+}
+
+/* 输入框 - 工业风 */
+.ant-input {
+  background: var(--industrial-bg);
+  border: 1px solid var(--industrial-border);
+  border-radius: 2px;
+  color: var(--industrial-text);
+  padding: 6px 10px;
+}
+
+.ant-input:focus {
+  border-color: var(--industrial-accent);
+  box-shadow: 0 0 0 2px rgba(240, 136, 62, 0.2);
+}
+
+.ant-input-affix-wrapper {
+  background: var(--industrial-bg);
+  border: 1px solid var(--industrial-border);
+  border-radius: 2px;
+  padding: 0 10px;
+}
+
+.ant-input-affix-wrapper .ant-input {
+  border: none;
+  box-shadow: none;
+}
+
+/* 标签 - 紧凑 */
+.ant-tag {
+  border-radius: 2px;
+  padding: 2px 6px;
+  font-size: 12px;
+  border: 1px solid var(--industrial-border);
+  background: var(--industrial-bg-tertiary);
+}
+
+/* 表格 - 工业风 */
+.ant-table {
+  background: var(--industrial-bg-secondary);
+  border: 1px solid var(--industrial-border);
+  border-radius: 2px;
+}
+
+.ant-table-thead > tr > th {
+  background: var(--industrial-bg-tertiary);
+  border-bottom: 1px solid var(--industrial-border);
+  color: var(--industrial-text-secondary);
+  font-weight: 600;
+  padding: 8px 12px;
+}
+
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid var(--industrial-border);
+  padding: 8px 12px;
+  color: var(--industrial-text);
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: var(--industrial-bg-tertiary);
+}
+
+/* 弹窗 - 工业风 */
+.ant-modal-content {
+  background: var(--industrial-bg-secondary);
+  border: 1px solid var(--industrial-border);
+  border-radius: 2px;
+}
+
+.ant-modal-header {
+  background: var(--industrial-bg-tertiary);
+  border-bottom: 1px solid var(--industrial-border);
+  padding: 12px 16px;
+}
+
+.ant-modal-body {
+  padding: 16px;
+}
+
+/* 菜单 - 紧凑工业风 */
+.ant-menu {
+  background: transparent;
+  border-right: none;
+}
+
+.ant-menu-item {
+  margin: 2px 4px;
+  padding: 8px 12px;
+  border-radius: 2px;
+  color: var(--industrial-text-secondary);
+  height: 36px;
+  line-height: 20px;
+}
+
+.ant-menu-item:hover {
+  color: var(--industrial-text);
+  background: var(--industrial-bg-tertiary);
+}
+
+.ant-menu-item-selected {
+  background: var(--industrial-accent) !important;
+  color: var(--industrial-bg) !important;
+}
+
+.ant-menu-submenu-title {
+  padding: 8px 12px;
+  color: var(--industrial-text-secondary);
+  height: 36px;
+  line-height: 20px;
+}
+
+/* 分割线 - 工业风 */
+.ant-divider {
+  border-color: var(--industrial-border);
+}
+
+/* 统计数字 - 紧凑 */
+.ant-statistic-title {
+  color: var(--industrial-text-secondary);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.ant-statistic-content {
+  color: var(--industrial-text);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* 下拉菜单 - 工业风 */
+.ant-dropdown-menu {
+  background: var(--industrial-bg-secondary);
+  border: 1px solid var(--industrial-border);
+  border-radius: 2px;
+  padding: 4px;
+}
+
+.ant-dropdown-menu-item {
+  color: var(--industrial-text);
+  padding: 6px 10px;
+  border-radius: 2px;
+}
+
+.ant-dropdown-menu-item:hover {
+  background: var(--industrial-bg-tertiary);
+}
+
+/* 消息提示 - 工业风 */
+.ant-message-notice-content {
+  background: var(--industrial-bg-secondary);
+  border: 1px solid var(--industrial-border);
+  border-radius: 2px;
+  color: var(--industrial-text);
+  padding: 8px 16px;
+}
+
+/* 加载中 - 工业风 */
+.ant-spin-dot-item {
+  background-color: var(--industrial-accent);
+}
+
+/* 骨架屏 - 工业风 */
+.ant-skeleton .ant-skeleton-content .ant-skeleton-title,
+.ant-skeleton .ant-skeleton-content .ant-skeleton-paragraph > li {
+  background: linear-gradient(90deg, var(--industrial-bg-tertiary) 25%, var(--industrial-border) 50%, var(--industrial-bg-tertiary) 75%);
+}
+
+/* 分页 - 工业风 */
+.ant-pagination-item {
+  background: var(--industrial-bg-tertiary);
+  border: 1px solid var(--industrial-border);
+  border-radius: 2px;
+}
+
+.ant-pagination-item-active {
+  background: var(--industrial-accent);
+  border-color: var(--industrial-accent);
+}
+
+.ant-pagination-item-active a {
+  color: var(--industrial-bg);
+}
+
+/* 步骤条 - 工业风 */
+.ant-steps-item-icon {
+  background: var(--industrial-bg-tertiary);
+  border-color: var(--industrial-border);
+}
+
+.ant-steps-item-process .ant-steps-item-icon {
+  background: var(--industrial-accent);
+  border-color: var(--industrial-accent);
+}
+
+.ant-steps-item-finish .ant-steps-item-icon {
+  background: var(--industrial-bg-secondary);
+  border-color: var(--industrial-accent);
+}
+
+/* 树形控件 - 工业风 */
+.ant-tree {
+  background: transparent;
+  color: var(--industrial-text);
+}
+
+.ant-tree-node-content-wrapper:hover {
+  background: var(--industrial-bg-tertiary);
+}
+
+.ant-tree-node-selected {
+  background: var(--industrial-accent) !important;
+  color: var(--industrial-bg) !important;
+}
+
+/* 折叠面板 - 工业风 */
+.ant-collapse {
+  background: var(--industrial-bg-secondary);
+  border: 1px solid var(--industrial-border);
+  border-radius: 2px;
+}
+
+.ant-collapse > .ant-collapse-item {
+  border-bottom: 1px solid var(--industrial-border);
+}
+
+.ant-collapse-header {
+  color: var(--industrial-text);
+  padding: 8px 12px;
+}
+
+.ant-collapse-content {
+  background: var(--industrial-bg);
+  border-top: 1px solid var(--industrial-border);
+}
+
+/* 时间线 - 工业风 */
+.ant-timeline-item-head {
+  background: var(--industrial-accent);
+  border-color: var(--industrial-accent);
+}
+
+/* 工具提示 - 工业风 */
+.ant-tooltip-inner {
+  background: var(--industrial-bg-tertiary);
+  border: 1px solid var(--industrial-border);
+  border-radius: 2px;
+  color: var(--industrial-text);
+}
+
+/* 气泡卡片 - 工业风 */
+.ant-popover-inner {
+  background: var(--industrial-bg-secondary);
+  border: 1px solid var(--industrial-border);
+  border-radius: 2px;
+}
+
+.ant-popover-title {
+  border-bottom: 1px solid var(--industrial-border);
+  color: var(--industrial-text);
+  padding: 8px 12px;
+}
+
+.ant-popover-inner-content {
+  color: var(--industrial-text);
+  padding: 12px;
+}
+
+/* 上传组件 - 工业风 */
+.ant-upload-drag {
+  background: var(--industrial-bg);
+  border: 1px dashed var(--industrial-border);
+  border-radius: 2px;
+}
+
+.ant-upload-drag:hover {
+  border-color: var(--industrial-accent);
+}
+
+/* 进度条 - 工业风 */
+.ant-progress-bg {
+  background: var(--industrial-accent);
+}
+
+/* 开关 - 工业风 */
+.ant-switch {
+  background: var(--industrial-border);
+}
+
+.ant-switch-checked {
+  background: var(--industrial-accent);
+}
+
+/* 滑块 - 工业风 */
+.ant-slider-track {
+  background: var(--industrial-accent);
+}
+
+.ant-slider-handle {
+  border-color: var(--industrial-accent);
+}
+
+/* 单选/复选 - 工业风 */
+.ant-radio-checked .ant-radio-inner {
+  border-color: var(--industrial-accent);
+}
+
+.ant-radio-inner::after {
+  background: var(--industrial-accent);
+}
+
+.ant-checkbox-checked .ant-checkbox-inner {
+  background: var(--industrial-accent);
+  border-color: var(--industrial-accent);
+}
+
+/* 选择器 - 工业风 */
+.ant-select-selector {
+  background: var(--industrial-bg) !important;
+  border: 1px solid var(--industrial-border) !important;
+  border-radius: 2px !important;
+  color: var(--industrial-text);
+}
+
+.ant-select-dropdown {
+  background: var(--industrial-bg-secondary);
+  border: 1px solid var(--industrial-border);
+  border-radius: 2px;
+}
+
+.ant-select-item {
+  color: var(--industrial-text);
+}
+
+.ant-select-item-option-selected {
+  background: var(--industrial-accent);
+  color: var(--industrial-bg);
+}
+
+.ant-select-item-option-active {
+  background: var(--industrial-bg-tertiary);
+}
+
+/* ========== 工业风工具类 ========== */
+
+/* 工业边框 */
+.industrial-border {
+  border: 1px solid var(--industrial-border);
+}
+
+.industrial-border-accent {
+  border: 1px solid var(--industrial-accent);
+}
+
+/* 工业背景 */
+.industrial-bg {
+  background: var(--industrial-bg);
+}
+
+.industrial-bg-secondary {
+  background: var(--industrial-bg-secondary);
+}
+
+.industrial-bg-tertiary {
+  background: var(--industrial-bg-tertiary);
+}
+
+/* 工业文字 */
+.industrial-text {
+  color: var(--industrial-text);
+}
+
+.industrial-text-secondary {
+  color: var(--industrial-text-secondary);
+}
+
+.industrial-text-accent {
+  color: var(--industrial-accent);
+}
+
+/* 紧凑间距 */
+.compact-padding {
+  padding: 8px 12px;
+}
+
+.compact-margin {
+  margin: 8px;
+}
+
+/* 状态指示灯 */
+.status-light {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-light.running {
+  background: var(--industrial-success);
+  box-shadow: 0 0 4px var(--industrial-success);
+}
+
+.status-light.warning {
+  background: var(--industrial-warning);
+  box-shadow: 0 0 4px var(--industrial-warning);
+}
+
+.status-light.error {
+  background: var(--industrial-danger);
+  box-shadow: 0 0 4px var(--industrial-danger);
+}
+
+.status-light.idle {
+  background: var(--industrial-text-secondary);
+}
+
+/* ========== 响应式布局 ========== */
+@media (max-width: 768px) {
+  .ant-layout-sider {
+    position: absolute !important;
+    z-index: 999;
+  }
+  
+  .ant-layout {
+    margin-left: 0 !important;
+  }
+}
+
+/* ========== 打印样式 ========== */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .ant-layout-sider {
+    display: none !important;
+  }
+  
+  .ant-layout {
+    margin-left: 0 !important;
+  }
+}
