@@ -1,6 +1,6 @@
 """
 RAGFlow 集成 API
-v0.8.0
+v0.8.1
 专业 RAG 问答接口
 """
 from fastapi import APIRouter, HTTPException, UploadFile, File
@@ -11,9 +11,7 @@ import tempfile
 
 from services.integration import (
     get_ragflow_service,
-    is_ragflow_available,
-    RAGFlowDataset,
-    RAGFlowDocument
+    is_ragflow_available
 )
 
 
@@ -26,7 +24,8 @@ class DatasetCreateRequest(BaseModel):
     """创建数据集请求"""
     name: str
     description: str = ""
-    embedding_model: str = "BAAI/bge-large-zh-v1.5"
+    chunk_method: str = "naive"
+    permission: str = "me"
 
 
 class ChatRequest(BaseModel):
@@ -34,8 +33,6 @@ class ChatRequest(BaseModel):
     dataset_ids: List[str]
     query: str
     top_k: int = 10
-    similarity_threshold: float = 0.5
-    temperature: float = 0.1
 
 
 class RetrievalRequest(BaseModel):
@@ -43,7 +40,6 @@ class RetrievalRequest(BaseModel):
     dataset_ids: List[str]
     query: str
     top_k: int = 10
-    similarity_threshold: float = 0.5
 
 
 # ========== 状态接口 ==========
@@ -56,11 +52,9 @@ async def get_status():
     if available:
         try:
             service = get_ragflow_service()
-            version = service.get_version()
             datasets = service.list_datasets()
             return {
                 "status": "connected",
-                "version": version,
                 "dataset_count": len(datasets),
                 "message": "RAGFlow 服务正常"
             }
@@ -97,20 +91,21 @@ async def create_dataset(request: DatasetCreateRequest):
     """创建数据集"""
     try:
         service = get_ragflow_service()
-        dataset = service.create_dataset(
+        result = service.create_dataset(
             name=request.name,
             description=request.description,
-            embedding_model=request.embedding_model
+            chunk_method=request.chunk_method,
+            permission=request.permission
         )
-        return {
-            "success": True,
-            "dataset": {
-                "id": dataset.id,
-                "name": dataset.name,
-                "description": dataset.description,
-                "document_count": dataset.document_count
+        
+        if result.get("code") == 0:
+            return {
+                "success": True,
+                "dataset": result.get("data")
             }
-        }
+        else:
+            raise HTTPException(status_code=500, detail=result.get("message"))
+            
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -122,16 +117,8 @@ async def list_datasets():
         service = get_ragflow_service()
         datasets = service.list_datasets()
         return {
-            "datasets": [
-                {
-                    "id": d.id,
-                    "name": d.name,
-                    "description": d.description,
-                    "document_count": d.document_count,
-                    "created_at": d.created_at
-                }
-                for d in datasets
-            ]
+            "datasets": datasets,
+            "count": len(datasets)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -142,18 +129,17 @@ async def get_dataset(dataset_id: str):
     """获取数据集详情"""
     try:
         service = get_ragflow_service()
-        dataset = service.get_dataset(dataset_id)
-        return {
-            "dataset": {
-                "id": dataset.id,
-                "name": dataset.name,
-                "description": dataset.description,
-                "document_count": dataset.document_count,
-                "created_at": dataset.created_at
+        result = service.get_dataset(dataset_id)
+        
+        if result.get("code") == 0:
+            return {
+                "dataset": result.get("data")
             }
-        }
+        else:
+            raise HTTPException(status_code=404, detail=result.get("message"))
+            
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete("/datasets/{dataset_id}")
@@ -185,16 +171,12 @@ async def upload_document(
         
         try:
             service = get_ragflow_service()
-            doc = service.upload_document(dataset_id, tmp_path, chunk_method)
+            result = service.upload_document(dataset_id, tmp_path, chunk_method)
             
             return {
-                "success": True,
-                "document": {
-                    "id": doc.id,
-                    "name": doc.name,
-                    "status": doc.status.value,
-                    "size": doc.size
-                }
+                "success": result.get("code") == 0,
+                "document": result.get("data"),
+                "message": result.get("message")
             }
         finally:
             os.unlink(tmp_path)
@@ -210,16 +192,8 @@ async def list_documents(dataset_id: str):
         service = get_ragflow_service()
         docs = service.list_documents(dataset_id)
         return {
-            "documents": [
-                {
-                    "id": d.id,
-                    "name": d.name,
-                    "status": d.status.value,
-                    "size": d.size,
-                    "created_at": d.created_at
-                }
-                for d in docs
-            ]
+            "documents": docs,
+            "count": len(docs)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -232,36 +206,6 @@ async def delete_document(dataset_id: str, doc_id: str):
         service = get_ragflow_service()
         success = service.delete_document(dataset_id, doc_id)
         return {"success": success}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/datasets/{dataset_id}/documents/{doc_id}/parse")
-async def parse_document(dataset_id: str, doc_id: str):
-    """触发文档解析"""
-    try:
-        service = get_ragflow_service()
-        success = service.parse_document(dataset_id, doc_id)
-        return {"success": success, "message": "解析任务已提交"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/datasets/{dataset_id}/documents/{doc_id}/wait")
-async def wait_document_ready(
-    dataset_id: str,
-    doc_id: str,
-    timeout: int = 300
-):
-    """等待文档解析完成"""
-    try:
-        service = get_ragflow_service()
-        ready = service.wait_document_ready(dataset_id, doc_id, timeout=timeout)
-        
-        if ready:
-            return {"ready": True, "message": "文档解析完成"}
-        else:
-            return {"ready": False, "message": "文档解析超时或失败"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -281,17 +225,10 @@ async def chat(request: ChatRequest):
         result = service.chat(
             dataset_ids=request.dataset_ids,
             query=request.query,
-            top_k=request.top_k,
-            similarity_threshold=request.similarity_threshold,
-            temperature=request.temperature
+            top_k=request.top_k
         )
         
-        return {
-            "success": True,
-            "answer": result.get("answer", ""),
-            "references": result.get("references", []),
-            "conversation_id": result.get("conversation_id")
-        }
+        return result
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -307,11 +244,10 @@ async def retrieval(request: RetrievalRequest):
     try:
         service = get_ragflow_service()
         
-        results = service.retrieval(
+        results = service.retrievals(
             dataset_ids=request.dataset_ids,
             query=request.query,
-            top_k=request.top_k,
-            similarity_threshold=request.similarity_threshold
+            top_k=request.top_k
         )
         
         return {
@@ -331,36 +267,38 @@ class ProcessDocumentRequest(BaseModel):
     dataset_name: str
     file: UploadFile = File(...)
     chunk_method: str = "naive"
-    auto_parse: bool = True
 
 
 @router.post("/process")
 async def process_document(
     request: ProcessDocumentRequest,
-    top_k: int = 5,
-    similarity_threshold: float = 0.5
+    top_k: int = 5
 ):
     """
     一站式文档处理
     
     1. 创建/获取数据集
     2. 上传文档
-    3. 解析文档
-    4. 返回问答
+    3. 返回结果
     """
     try:
         service = get_ragflow_service()
         
         # 1. 获取或创建数据集
         datasets = service.list_datasets()
-        dataset = None
+        dataset_id = None
         for d in datasets:
-            if d.name == request.dataset_name:
-                dataset = d
+            if d.get("name") == request.dataset_name:
+                dataset_id = d.get("id")
                 break
         
-        if not dataset:
-            dataset = service.create_dataset(name=request.dataset_name)
+        if not dataset_id:
+            result = service.create_dataset(name=request.dataset_name)
+            if result.get("code") == 0:
+                dataset_id = result.get("data", {}).get("id")
+        
+        if not dataset_id:
+            raise HTTPException(status_code=500, detail="创建数据集失败")
         
         # 2. 保存上传文件
         with tempfile.NamedTemporaryFile(delete=False, suffix=request.file.filename) as tmp:
@@ -370,30 +308,20 @@ async def process_document(
         
         try:
             # 3. 上传文档
-            doc = service.upload_document(
-                dataset.id, tmp_path, request.chunk_method
+            result = service.upload_document(
+                dataset_id, tmp_path, request.chunk_method
             )
             
-            # 4. 解析文档
-            if request.auto_parse:
-                service.parse_document(dataset.id, doc.id)
-            
-            # 5. 返回结果
             return {
-                "success": True,
-                "dataset": {
-                    "id": dataset.id,
-                    "name": dataset.name
-                },
-                "document": {
-                    "id": doc.id,
-                    "name": doc.name,
-                    "status": doc.status.value
-                },
-                "message": "文档上传成功，正在解析中"
+                "success": result.get("code") == 0,
+                "dataset_id": dataset_id,
+                "document": result.get("data"),
+                "message": "文档上传成功"
             }
         finally:
             os.unlink(tmp_path)
             
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
