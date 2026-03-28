@@ -11,8 +11,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from backend.core.config import settings
-from backend.database import get_db
+from backend.core.security import SECRET_KEY, ALGORITHM, security as httpBearer
+from backend.models.database import get_db
 from backend.models.rbac_models import User, Permission
 
 security = HTTPBearer()
@@ -23,8 +23,8 @@ def decode_token(token: str) -> dict:
     try:
         payload = jwt.decode(
             token,
-            settings.JWT_SECRET,
-            algorithms=[settings.JWT_ALGORITHM]
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
         )
         return payload
     except JWTError:
@@ -230,7 +230,7 @@ async def init_default_rbac(db: Session):
     初始化默认 RBAC 数据（角色和权限）
     在系统首次启动时调用
     """
-    from backend.models.rbac_models import DEFAULT_PERMISSIONS, DEFAULT_ROLES, Permission, Role
+    from models.rbac_models import DEFAULT_PERMISSIONS, DEFAULT_ROLES, Permission, Role
 
     # 创建默认权限
     existing_codes = {p.code for p in db.query(Permission).all()}

@@ -9,7 +9,7 @@ from typing import Optional
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Table, Text
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from backend.database import Base
+from backend.models.database import Base
 
 
 class ResourceType(str, Enum):
