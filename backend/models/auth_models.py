@@ -6,7 +6,7 @@
 from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Table, DateTime, Text, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from backend.models.database import Base
+from models.database import Base
 import enum
 
 
@@ -124,7 +124,7 @@ class Role(Base):
     # 关系
     users = relationship('User', secondary=user_roles, back_populates='roles')
     permissions = relationship('Permission', secondary=role_permissions, back_populates='roles')
-    creator = relationship('User', remote_side=[id])
+    creator = relationship('User')
     
     def __repr__(self):
         return f'<Role {self.code}>'
@@ -149,7 +149,7 @@ class Permission(Base):
     
     # 关系
     roles = relationship('Role', secondary=role_permissions, back_populates='permissions')
-    creator = relationship('User', remote_side=[id])
+    creator = relationship('User')
     
     def __repr__(self):
         return f'<Permission {self.code}>'
@@ -186,6 +186,47 @@ class Department(Base):
             children.append(child)
             children.extend(child.get_all_children())
         return children
+
+
+class DocumentAccessLog(Base):
+    """文档访问日志表"""
+    __tablename__ = 'sys_document_access_logs'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('sys_users.id', ondelete='SET NULL'), nullable=True, comment='用户ID')
+    document_id = Column(String(100), nullable=True, comment='文档ID')
+    document_title = Column(String(255), nullable=True, comment='文档标题')
+    action = Column(String(50), nullable=False, comment='操作类型: view, download, search, chat')
+    ip_address = Column(String(50), nullable=True, comment='IP地址')
+    user_agent = Column(String(500), nullable=True, comment='User-Agent')
+    search_query = Column(Text, nullable=True, comment='搜索关键词')
+    chat_query = Column(Text, nullable=True, comment='聊天问题')
+    chat_answer = Column(Text, nullable=True, comment='AI回答')
+    created_at = Column(DateTime, server_default=func.now(), index=True, comment='访问时间')
+    
+    def __repr__(self):
+        return f'<DocumentAccessLog {self.action} on {self.document_id}>'
+
+
+class RefreshToken(Base):
+    """刷新令牌表"""
+    __tablename__ = 'sys_refresh_tokens'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('sys_users.id', ondelete='CASCADE'), nullable=False, comment='用户ID')
+    token = Column(String(500), unique=True, nullable=False, index=True, comment='刷新令牌')
+    expires_at = Column(DateTime, nullable=False, comment='过期时间')
+    is_revoked = Column(Boolean, default=False, comment='是否已撤销')
+    created_at = Column(DateTime, server_default=func.now(), comment='创建时间')
+    revoked_at = Column(DateTime, nullable=True, comment='撤销时间')
+    ip_address = Column(String(50), nullable=True, comment='IP地址')
+    user_agent = Column(String(500), nullable=True, comment='User-Agent')
+    
+    # 关系
+    user = relationship('User', backref='refresh_tokens')
+    
+    def __repr__(self):
+        return f'<RefreshToken for user {self.user_id}>'
 
 
 class AuditLog(Base):

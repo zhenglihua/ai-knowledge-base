@@ -293,7 +293,7 @@ const KnowledgeGraphVisualizer: React.FC<KnowledgeGraphVisualizerProps> = ({
   return (
     <Card
       className={`knowledge-graph-card ${isFullscreen ? 'fullscreen' : ''}`}
-      bodyStyle={{ padding: 0, position: 'relative' }}
+      styles={{ body: { padding: 0, position: 'relative' } }}
       style={{ height: isFullscreen ? '100vh' : 'auto' }}
     >
       {/* 工具栏 */}

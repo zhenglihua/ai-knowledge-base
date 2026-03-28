@@ -3,14 +3,15 @@
 */
 
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Switch, Space, Tag, message, Popconfirm } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Select, Space, Tag, message, Popconfirm } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { userService } from '../services/userService';
+import { User } from '../types/auth';
 
 const { Option } = Select;
 
 const UserManagement: React.FC = () => {
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
@@ -50,7 +51,7 @@ const UserManagement: React.FC = () => {
     setModalVisible(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     try {
       await userService.deleteUser(id);
       message.success('删除成功');

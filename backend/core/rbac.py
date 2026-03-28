@@ -11,9 +11,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from backend.core.security import SECRET_KEY, ALGORITHM, security as httpBearer
-from backend.models.database import get_db
-from backend.models.rbac_models import User, Permission
+from core.security import SECRET_KEY, ALGORITHM, security as httpBearer
+from models.database import get_db
+from models.rbac_models import User, Permission
 
 security = HTTPBearer()
 

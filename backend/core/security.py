@@ -11,7 +11,7 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 import os
 
-from backend.models.database import get_db
+from models.database import get_db
 
 # 安全配置
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
@@ -167,7 +167,7 @@ async def get_current_user(
         )
     
     # 从数据库获取用户信息
-    from backend.models.auth_models import User
+    from models.auth_models import User
     user = db.query(User).filter(User.id == user_id).first()
     if user is None or not user.is_active:
         raise HTTPException(

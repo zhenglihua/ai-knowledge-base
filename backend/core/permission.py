@@ -9,8 +9,8 @@ from typing import Optional, List
 import jwt
 import time
 
-from backend.models.database import get_db
-from backend.models.auth_models import User, Permission, AuditLog
+from models.database import get_db
+from models.auth_models import User, Permission, AuditLog
 
 # JWT配置
 JWT_SECRET = "your-secret-key-change-in-production"
@@ -190,7 +190,7 @@ def filter_by_data_level(query, user: User, model_class):
     
     # 过滤条件：只能看到权限等级 <= 自身等级的数据
     if hasattr(model_class, 'data_level'):
-        from backend.models.auth_models import DataLevel
+        from models.auth_models import DataLevel
         # 这里需要根据实际字段类型调整过滤逻辑
         pass
     
