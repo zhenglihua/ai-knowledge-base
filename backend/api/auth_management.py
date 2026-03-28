@@ -11,9 +11,9 @@ from pydantic import BaseModel, EmailStr
 from datetime import datetime
 import bcrypt
 
-from backend.models.database import get_db
-from backend.models.auth_models import User, Role, Permission, Department, AuditLog, UserStatus, DataLevel
-from backend.core.security import get_current_user, get_current_admin
+from models.database import get_db
+from models.auth_models import User, Role, Permission, Department, AuditLog, UserStatus, DataLevel
+from core.security import get_current_user, get_current_admin
 
 router = APIRouter(prefix="/api/auth", tags=["权限管理"])
 

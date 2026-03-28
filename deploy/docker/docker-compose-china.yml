@@ -1,0 +1,209 @@
+# AI知识库系统 - 国产化 Docker Compose 配置
+# 适用场景: 麒麟 Kylin、统信 UOS、龙蜥 Anolis、银河麒麟等国产操作系统
+# 使用方法:
+#   docker-compose -f docker-compose.yml -f docker-compose-china.yml up -d
+#   # 或直接使用
+#   docker-compose -f docker-compose-china.yml up -d
+
+version: "3.9"
+
+services:
+  # ========== Backend - 国产模型支持 ==========
+  backend:
+    image: ${IMAGE_REGISTRY:-}/ai-knowledge-base-backend:${IMAGE_TAG:-latest}
+    container_name: ai-knowledge-base-backend-cn
+    restart: always
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://${DB_USER:-ai_kb}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-ai_knowledge_base}}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      # 国产模型配置 (通义千问/DashScope)
+      - OPENAI_API_KEY=${DASHSCOPE_API_KEY:-${OPENAI_API_KEY}}
+      - OPENAI_API_BASE=${DASHSCOPE_API_BASE:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      - OPENAI_MODEL=${CHINA_MODEL:-qwen-turbo}
+      - EMBEDDING_MODEL=${CHINA_EMBEDDING_MODEL:-text-embedding-v2}
+      # 国内镜像源配置
+      - PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+      - PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn
+      - HF_ENDPOINT=https://hf-mirror.com
+    volumes:
+      - ../../uploads:/app/uploads
+      - ../../data:/app/data
+      - ../../models:/app/models:ro
+      - backend_logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - ai-knowledge-base
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '1'
+          memory: 2G
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # 国产操作系统兼容性
+    security_opt:
+      - seccomp:unconfined
+    tmpfs:
+      - /tmp:size=1G
+
+  # ========== Frontend ==========
+  frontend:
+    image: ${IMAGE_REGISTRY:-}/ai-knowledge-base-frontend:${IMAGE_TAG:-latest}
+    container_name: ai-knowledge-base-frontend-cn
+    restart: always
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      - backend
+    networks:
+      - ai-knowledge-base
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+
+  # ========== Redis - 国产化使用阿里云/腾讯云缓存服务时禁用 ==========
+  redis:
+    image: redis:7-alpine
+    container_name: ai-knowledge-base-redis-cn
+    restart: always
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 60
+    volumes:
+      - redis_data:/data
+    networks:
+      - ai-knowledge-base
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ========== Qdrant 向量数据库 ==========
+  qdrant:
+    image: registry.cn-hangzhou.aliyuncs.com/ai-knowledge-base/qdrant:latest
+    container_name: ai-knowledge-base-qdrant-cn
+    restart: always
+    ports:
+      - "127.0.0.1:6333:6333"
+      - "127.0.0.1:6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - ai-knowledge-base
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:6333/readyz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ========== PostgreSQL - 国产数据库兼容 ==========
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-knowledge-base-postgres-cn
+    restart: always
+    environment:
+      - POSTGRES_DB=${DB_NAME:-ai_knowledge_base}
+      - POSTGRES_USER=${DB_USER:-ai_kb}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ai-knowledge-base
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ai_kb} -d ${DB_NAME:-ai_knowledge_base}"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ========== Nginx - 国产化配置 ==========
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: ai-knowledge-base-nginx-cn
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - ai-knowledge-base
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  ai-knowledge-base:
+    driver: bridge
+
+volumes:
+  redis_data:
+    driver: local
+  qdrant_data:
+    driver: local
+  postgres_data:
+    driver: local
+  backend_logs:
+    driver: local
+  nginx_logs:
+    driver: local

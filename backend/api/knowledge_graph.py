@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 
-from backend.models.database import get_db
-from backend.services.neo4j_service import get_neo4j_service, Neo4jService
-from backend.core.permission import get_current_user
+from models.database import get_db
+from services.neo4j_service import get_neo4j_service, Neo4jService
+from core.permission import get_current_user
 
 router = APIRouter(prefix="/api/kg", tags=["知识图谱"])
 

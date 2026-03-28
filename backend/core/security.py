@@ -191,6 +191,16 @@ async def get_current_active_user(current_user: dict = Depends(get_current_user)
     return current_user
 
 
+async def get_current_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    """获取当前管理员用户（仅限管理员角色）"""
+    if current_user.get("role") != Role.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="需要管理员权限"
+        )
+    return current_user
+
+
 def require_permissions(*permissions: str):
     """权限检查装饰器"""
     async def permission_checker(current_user: dict = Depends(get_current_user)):

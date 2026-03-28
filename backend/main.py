@@ -26,7 +26,7 @@ from services.rag_service import EnhancedRAGService, EnhancedVectorStore
 from services.classification_service import analyze_document, classify_document
 
 # 导入API路由
-from api import conversations, stats, ocr, categories, auth, users, audit
+from api import conversations, stats, ocr, categories, auth, users, audit, auth_management
 from kg_module.api import routes as kg_routes
 from cim_module import cim_router, dashboard_router
 
@@ -86,6 +86,7 @@ app.include_router(categories.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(audit.router)
+# app.include_router(auth_management.router)  # TODO: 修复后启用
 app.include_router(kg_routes.router)
 app.include_router(cim_router)
 app.include_router(dashboard_router)

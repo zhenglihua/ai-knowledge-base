@@ -172,8 +172,7 @@ class Department(Base):
     created_at = Column(DateTime, server_default=func.now(), comment='创建时间')
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), comment='更新时间')
     
-    # 关系
-    parent = relationship('Department', remote_side=[id], backref='children')
+    # 关系 - 简化版，移除自引用
     users = relationship('User', secondary=user_departments, back_populates='departments')
     
     def __repr__(self):
@@ -237,9 +236,11 @@ class AuditLog(Base):
     user_id = Column(Integer, ForeignKey('sys_users.id', ondelete='SET NULL'), nullable=True, comment='用户ID')
     username = Column(String(50), nullable=True, comment='用户名')
     action = Column(String(50), nullable=False, comment='操作类型: login, logout, create, update, delete, query, export, download')
+    module = Column(String(50), nullable=True, comment='模块')
     resource_type = Column(String(50), nullable=True, comment='资源类型')
     resource_id = Column(String(100), nullable=True, comment='资源ID')
     resource_name = Column(String(255), nullable=True, comment='资源名称')
+    description = Column(Text, nullable=True, comment='描述')
     request_method = Column(String(10), nullable=True, comment='请求方法')
     request_path = Column(String(500), nullable=True, comment='请求路径')
     request_params = Column(Text, nullable=True, comment='请求参数')
@@ -249,8 +250,11 @@ class AuditLog(Base):
     ip_address = Column(String(50), nullable=True, comment='IP地址')
     user_agent = Column(String(500), nullable=True, comment='User-Agent')
     is_success = Column(Boolean, default=True, comment='是否成功')
+    status = Column(String(20), nullable=True, comment='状态')
     error_message = Column(Text, nullable=True, comment='错误信息')
     duration_ms = Column(Integer, nullable=True, comment='耗时毫秒')
+    old_values = Column(Text, nullable=True, comment='旧值')
+    new_values = Column(Text, nullable=True, comment='新值')
     created_at = Column(DateTime, server_default=func.now(), index=True, comment='操作时间')
     
     # 关系
