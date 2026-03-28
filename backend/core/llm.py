@@ -32,18 +32,28 @@ class LLMService:
 
     def _init_client(self):
         """初始化客户端"""
-        if not self.config.api_key and self.config.provider != "local":
+        # Ollama 和本地模型不需要 API Key
+        if not self.config.api_key and self.config.provider not in ["ollama", "local"]:
             print(f"⚠️ {self.config.provider} API Key 未配置，将使用模拟模式")
             return
 
-        self._session.headers.update({
-            "Authorization": f"Bearer {self.config.api_key}",
-            "Content-Type": "application/json",
-        })
+        # Ollama 和本地模型不需要 Authorization header
+        if self.config.api_key and self.config.provider not in ["ollama", "local"]:
+            self._session.headers.update({
+                "Authorization": f"Bearer {self.config.api_key}",
+                "Content-Type": "application/json",
+            })
+        else:
+            self._session.headers.update({
+                "Content-Type": "application/json",
+            })
 
     @property
     def is_available(self) -> bool:
         """检查 LLM 是否可用"""
+        # Ollama 和本地模型始终可用
+        if self.config.provider in ["ollama", "local"]:
+            return True
         return bool(self.config.api_key)
 
     def generate(
@@ -75,6 +85,8 @@ class LLMService:
             # 根据 provider 调用不同的 API
             if self.config.provider == "qwen":
                 return self._generate_qwen(messages, **kwargs)
+            elif self.config.provider in ["ollama", "local"]:
+                return self._generate_ollama(messages, **kwargs)
             else:
                 return self._generate_openai(messages, **kwargs)
         except Exception as e:
@@ -82,7 +94,7 @@ class LLMService:
             return self._generate_fallback(prompt, context)
 
     def _generate_openai(self, messages: List[Dict[str, str]], **kwargs) -> str:
-        """使用 OpenAI 兼容 API"""
+        """使用 OpenAI 兼容 API (包含 Ollama)"""
         url = f"{self.config.base_url}/chat/completions"
         payload = {
             "model": self.config.model,
@@ -91,7 +103,13 @@ class LLMService:
             "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
         }
 
-        response = self._session.post(url, json=payload, timeout=60)
+        # Ollama 不需要 Authorization header
+        headers = {}
+        if self.config.provider != "ollama" and self.config.provider != "local":
+            headers["Authorization"] = f"Bearer {self.config.api_key}"
+            self._session.headers.update(headers)
+
+        response = self._session.post(url, json=payload, timeout=120)
         response.raise_for_status()
         data = response.json()
 
@@ -116,6 +134,26 @@ class LLMService:
 
         # 解析 Qwen 返回格式: {"output": {"choices": [{"message": {"content": "..."}}]}}
         return data["output"]["choices"][0]["message"]["content"]
+
+    def _generate_ollama(self, messages: List[Dict[str, str]], **kwargs) -> str:
+        """使用 Ollama 本地模型"""
+        url = f"{self.config.base_url}/chat/completions"
+        payload = {
+            "model": self.config.model,
+            "messages": messages,
+            "stream": False,
+            "options": {
+                "temperature": kwargs.get("temperature", self.config.temperature),
+                "num_predict": kwargs.get("max_tokens", self.config.max_tokens),
+            }
+        }
+
+        response = self._session.post(url, json=payload, timeout=120)
+        response.raise_for_status()
+        data = response.json()
+
+        # OpenAI 兼容格式: choices[0].message.content
+        return data["choices"][0]["message"]["content"]
 
     def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
         """将消息列表转换为纯文本"""

@@ -31,6 +31,7 @@ class LLMConfigManager:
     PROVIDER_OPENAI = "openai"
     PROVIDER_OPENROUTER = "openrouter"
     PROVIDER_QWEN = "qwen"
+    PROVIDER_OLLAMA = "ollama"
     PROVIDER_LOCAL = "local"
 
     # 支持的模型
@@ -58,6 +59,7 @@ class LLMConfigManager:
         "openai": "https://api.openai.com/v1",
         "openrouter": "https://openrouter.ai/api/v1",
         "qwen": "https://dashscope.aliyuncs.com/api/v1",
+        "ollama": "http://localhost:11434/v1",
         "local": "http://localhost:11434/v1",  # Ollama 默认
     }
 
@@ -83,15 +85,19 @@ class LLMConfigManager:
             self._config = self._get_openrouter_config()
         elif provider == self.PROVIDER_QWEN:
             self._config = self._get_qwen_config()
+        elif provider == self.PROVIDER_OLLAMA:
+            self._config = self._get_ollama_config()
         elif provider == self.PROVIDER_LOCAL:
             self._config = self._get_local_config()
         else:
-            # 默认使用 Qwen
-            self._config = self._get_qwen_config()
+            # 默认使用 Ollama
+            self._config = self._get_ollama_config()
 
     def _auto_detect_provider(self) -> str:
         """自动检测可用的 Provider"""
-        # 优先级: Qwen > OpenRouter > MiniMax > OpenAI > 本地
+        # 优先级: Ollama > Qwen > OpenRouter > MiniMax > OpenAI > 本地
+        if os.getenv("OLLAMA_API_KEY") or os.getenv("OLLAMA_HOST"):
+            return self.PROVIDER_OLLAMA
         if os.getenv("QWEN_API_KEY"):
             return self.PROVIDER_QWEN
         if os.getenv("OPENROUTER_API_KEY"):
@@ -102,7 +108,7 @@ class LLMConfigManager:
             return self.PROVIDER_OPENAI
         if os.getenv("LOCAL_MODEL_ENDPOINT"):
             return self.PROVIDER_LOCAL
-        return self.PROVIDER_QWEN  # 默认
+        return self.PROVIDER_OLLAMA  # 默认
 
     def _get_minimax_config(self) -> LLMConfig:
         """MiniMax 配置"""
@@ -171,6 +177,22 @@ class LLMConfigManager:
                 "你是一个专业的半导体工厂知识库助手，基于提供的参考资料回答用户问题。回答要准确、专业、简洁。")
         )
 
+    def _get_ollama_config(self) -> LLMConfig:
+        """Ollama 本地模型配置"""
+        model = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+        base_url = os.getenv("OLLAMA_HOST") or self.BASE_URLS["ollama"]
+
+        return LLMConfig(
+            provider=self.PROVIDER_OLLAMA,
+            model=model,
+            api_key="",  # Ollama 不需要 API Key
+            base_url=base_url,
+            max_tokens=int(os.getenv("LLM_MAX_TOKENS", "2000")),
+            temperature=float(os.getenv("LLM_TEMPERATURE", "0.3")),
+            system_prompt=os.getenv("LLM_SYSTEM_PROMPT",
+                "你是一个专业的半导体工厂知识库助手，基于提供的参考资料回答用户问题。回答要准确、专业、简洁。")
+        )
+
     def _get_local_config(self) -> LLMConfig:
         """本地模型配置"""
         endpoint = os.getenv("LOCAL_MODEL_ENDPOINT", "http://localhost:11434/v1")
@@ -199,6 +221,7 @@ class LLMConfigManager:
             self.PROVIDER_OPENAI: "OpenAI",
             self.PROVIDER_OPENROUTER: "OpenRouter",
             self.PROVIDER_QWEN: "通义千问",
+            self.PROVIDER_OLLAMA: "Ollama (本地)",
             self.PROVIDER_LOCAL: "本地模型"
         }
         return names.get(self._config.provider, self._config.provider)
@@ -227,6 +250,12 @@ class LLMConfigManager:
             self._config = self._get_qwen_config()
             if kwargs.get("api_key"):
                 self._config.api_key = kwargs["api_key"]
+            if kwargs.get("model"):
+                self._config.model = kwargs["model"]
+        elif provider == self.PROVIDER_OLLAMA:
+            self._config = self._get_ollama_config()
+            if kwargs.get("endpoint"):
+                self._config.base_url = kwargs["endpoint"]
             if kwargs.get("model"):
                 self._config.model = kwargs["model"]
         elif provider == self.PROVIDER_LOCAL:
