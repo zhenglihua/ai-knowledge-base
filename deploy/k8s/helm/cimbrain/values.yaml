@@ -1,0 +1,197 @@
+# CIMBrain Kubernetes Helm Chart 配置
+# 适用于集群环境部署 (≥50 并发用户)
+
+# ========== 全局配置 ==========
+global:
+  # 镜像仓库 (离线环境需配置内网镜像仓库)
+  imageRegistry: docker.io
+  imagePullSecrets: []
+  # 示例: my-registry-secret
+
+# ========== 前端配置 ==========
+frontend:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    repository: cimbrain/frontend
+    tag: "0.6.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 3000
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    hosts:
+      - host: cimbrain.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+# ========== 后端 API 配置 ==========
+backend:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    repository: cimbrain/backend
+    tag: "0.6.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 8000
+
+  env:
+    # LLM 配置
+    LLM_PROVIDER: "ollama"
+    OLLAMA_HOST: "http://ollama-service:11434"
+    OLLAMA_MODEL: "qwen2.5:7b"
+
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+  # 健康检查
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: 8000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 5
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+# ========== PostgreSQL 配置 ==========
+postgresql:
+  enabled: true
+  auth:
+    database: cimbrain
+    username: cimbrain
+    password: "cimbrain_secure_password"
+
+  primary:
+    persistence:
+      enabled: true
+      size: 50Gi
+      storageClass: ""
+
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+# ========== Redis 配置 ==========
+redis:
+  enabled: true
+  auth:
+    password: ""
+
+  master:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: ""
+
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+
+# ========== MinIO 配置 ==========
+minio:
+  enabled: true
+  mode: standalone
+
+  auth:
+    rootUser: "cimbrain_admin"
+    rootPassword: "cimbrain_minio_secret"
+
+  persistence:
+    enabled: true
+    size: 100Gi
+    storageClass: ""
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 512Mi
+
+  service:
+    type: ClusterIP
+    port: 9000
+    consolePort: 9001
+
+# ========== Ollama (可选, 本地模型) ==========
+ollama:
+  enabled: false  # 如需内置 Ollama, 设置为 true
+  model: "qwen2.5:7b"
+
+  service:
+    type: ClusterIP
+    port: 11434
+
+  persistence:
+    enabled: true
+    size: 100Gi
+    storageClass: ""
+
+# ========== Ingress-Nginx 配置 ==========
+ingress-nginx:
+  enabled: true
+  controller:
+    replicaCount: 1
+    service:
+      type: LoadBalancer
+
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi

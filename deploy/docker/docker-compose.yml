@@ -1,73 +1,153 @@
-version: "3.8"
+# CIMBrain 私有化部署 - Docker Compose
+# 适用于单机部署 (≤50 并发用户)
+#
+# 使用方式:
+#   cp deploy/docker/.env.example .env
+#   # 编辑 .env 配置
+#   docker-compose up -d
+#
+# 端口说明:
+#   - 3000: 前端 (React)
+#   - 8000: 后端 API (FastAPI)
+#   - 5432: PostgreSQL 数据库
+#   - 6379: Redis 缓存
+#   - 8080: MinIO 对象存储 (S3兼容)
+
+version: '3.8'
 
 services:
-  # --- Core Services ---
-  qdrant:
-    image: qdrant/qdrant:v1.7.4
-    container_name: aikb_qdrant
-    restart: unless-stopped
+  # ========== 前端 ==========
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../deploy/docker/Dockerfile.frontend
+    container_name: cimbrain-frontend
     ports:
-      - "${QDRANT_HTTP_PORT:-6333}:6333"
-      - "${QDRANT_GRPC_PORT:-6334}:6334"
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_BASE=http://localhost:8000/api
+    depends_on:
+      - backend
+    networks:
+      - cimbrain-network
+    restart: unless-stopped
+
+  # ========== 后端 API ==========
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../deploy/docker/Dockerfile.backend
+    container_name: cimbrain-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://cimbrain:${POSTGRES_PASSWORD}@postgres:5432/cimbrain
+      - REDIS_URL=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:7b}
+    depends_on:
+      - postgres
+      - redis
+      - minio
+    networks:
+      - cimbrain-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
     volumes:
-      - qdrant_data:/qdrant/storage
+      - ./uploads:/app/uploads
+
+  # ========== PostgreSQL 数据库 ==========
+  postgres:
+    image: postgres:15-alpine
+    container_name: cimbrain-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=cimbrain
+      - POSTGRES_USER=cimbrain
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cimbrain-network
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/readyz"]
+      test: ["CMD-SHELL", "pg_isready -U cimbrain"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # --- Backend ---
-  backend:
-    build:
-      context: ../../backend
-      dockerfile: Dockerfile
-    container_name: aikb_backend
-    restart: unless-stopped
-    ports:
-      - "${BACKEND_PORT:-8000}:8000"
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - QDRANT_URL=http://qdrant:6333
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
-      - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES:-1440}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
-      - SECRET_KEY=${SECRET_KEY}
-      - ENVIRONMENT=${ENVIRONMENT:-production}
-    depends_on:
-      qdrant:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # --- Frontend ---
-  frontend:
-    build:
-      context: ../../frontend
-      dockerfile: Dockerfile
-    container_name: aikb_frontend
-    restart: unless-stopped
-    ports:
-      - "${FRONTEND_PORT:-3000}:80"
-    depends_on:
-      - backend
-
-  # --- Redis (Session/Cache) ---
+  # ========== Redis 缓存 ==========
   redis:
     image: redis:7-alpine
-    container_name: aikb_redis
-    restart: unless-stopped
+    container_name: cimbrain-redis
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    networks:
+      - cimbrain-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
+  # ========== MinIO 对象存储 ==========
+  minio:
+    image: minio/minio:latest
+    container_name: cimbrain-minio
+    ports:
+      - "9000:9000"   # API 端口
+      - "9001:9001"   # Console 端口
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    networks:
+      - cimbrain-network
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ========== Nginx 反向代理 (可选) ==========
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: cimbrain-nginx
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./nginx/ssl:/etc/nginx/ssl:ro
+  #   depends_on:
+  #     - frontend
+  #     - backend
+  #   networks:
+  #     - cimbrain-network
+  #   restart: unless-stopped
+
+# ========== 网络 ==========
+networks:
+  cimbrain-network:
+    driver: bridge
+
+# ========== 数据卷 ==========
 volumes:
-  qdrant_data:
+  postgres_data:
+    driver: local
   redis_data:
+    driver: local
+  minio_data:
+    driver: local

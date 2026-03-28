@@ -1,0 +1,15 @@
+apiVersion: v2
+name: cimbrain
+description: CIMBrain - 半导体工厂智能知识库
+type: application
+version: 0.6.0
+appVersion: "0.6.0"
+keywords:
+  - semiconductor
+  - cim
+  - knowledge-base
+  - rag
+  - ai
+maintainers:
+  - name: CIMBrain Team
+    email: team@cimbrain.example.com

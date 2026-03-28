@@ -1,0 +1,101 @@
+# CIMBrain 私有化部署配置
+# 适用于生产环境
+
+# ========== 环境信息 ==========
+environment: "production"  # development / production
+region: "cn"  # cn / global
+
+# ========== 域名配置 ==========
+domain:
+  host: "cimbrain.example.com"
+  https: false  # 生产环境建议开启
+
+# ========== 数据库配置 ==========
+database:
+  host: "postgres"
+  port: 5432
+  name: "cimbrain"
+  user: "cimbrain"
+  # 密码通过 K8s Secret 或环境变量注入
+  max_connections: 100
+  pool_size: 20
+
+# ========== Redis 配置 ==========
+redis:
+  host: "redis"
+  port: 6379
+  db: 0
+  pool_size: 10
+
+# ========== 对象存储配置 ==========
+minio:
+  endpoint: "minio:9000"
+  bucket: "cimbrain"
+  # 凭据通过 K8s Secret 注入
+
+# ========== LLM 配置 ==========
+llm:
+  provider: "ollama"  # ollama / qwen / openai / minimax
+  ollama:
+    host: "http://ollama:11434"
+    model: "qwen2.5:7b"
+  qwen:
+    api_key: ""
+    model: "qwen-turbo"
+  openai:
+    api_key: ""
+    model: "gpt-4"
+
+# ========== 安全配置 ==========
+security:
+  # CORS 配置
+  cors:
+    allow_origins: ["*"]
+    allow_methods: ["GET", "POST", "PUT", "DELETE"]
+    allow_headers: ["*"]
+
+  # JWT 配置
+  jwt:
+    secret: ""  # 通过环境变量注入
+    algorithm: "HS256"
+    access_token_expire_minutes: 60
+
+  # RBAC 权限
+  rbac:
+    enabled: true
+    default_role: "user"  # admin / engineer / guest / user
+
+# ========== 审计日志 ==========
+audit:
+  enabled: true
+  retention_days: 90
+  log_operations:
+    - "document:upload"
+    - "document:download"
+    - "document:delete"
+    - "user:login"
+    - "user:logout"
+
+# ========== 性能配置 ==========
+performance:
+  # 向量检索
+  vector:
+    batch_size: 100
+    top_k: 10
+    similarity_threshold: 0.7
+
+  # 文件上传
+  upload:
+    max_file_size_mb: 100
+    allowed_extensions: [".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md"]
+
+  # 缓存
+  cache:
+    enabled: true
+    ttl_seconds: 3600
+
+# ========== 监控配置 ==========
+monitoring:
+  enabled: true
+  metrics_port: 9090
+  health_check_path: "/api/health"
