@@ -1,0 +1,32 @@
+apiVersion: v2
+name: ai-knowledge-base
+description: AI知识库系统 Helm Chart - 支持私有化部署
+type: application
+version: 0.2.0
+appVersion: "v0.2.0"
+keywords:
+  - ai
+  - knowledge-base
+  - llm
+  - rag
+maintainers:
+  - name: AI Knowledge Base Team
+    email: support@example.com
+home: https://github.com/your-org/ai-knowledge-base
+sources:
+  - https://github.com/your-org/ai-knowledge-base
+icon: https://raw.githubusercontent.com/your-org/ai-knowledge-base/main/logo.png
+
+dependencies:
+  - name: postgresql
+    version: 12.x.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: 17.x.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+  - name: qdrant
+    version: 0.1.0
+    repository: https://charts.qdrant.io/qdrant
+    condition: qdrant.enabled

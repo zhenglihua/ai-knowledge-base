@@ -1,0 +1,182 @@
+# Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ai-knowledge-base.fullname" . }}-backend
+  labels:
+    {{- include "ai-knowledge-base.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ai-knowledge-base.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        {{- include "ai-knowledge-base.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      serviceAccountName: {{ include "ai-knowledge-base.serviceAccountName" . }}
+      containers:
+        - name: backend
+          image: {{ .Values.global.imageRegistry }}/{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.backend.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.backend.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ai-knowledge-base.fullname" . }}-secrets
+                  key: database-url
+                  optional: true
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ai-knowledge-base.fullname" . }}-secrets
+                  key: jwt-secret
+                  optional: true
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ai-knowledge-base.fullname" . }}-secrets
+                  key: openai-api-key
+                  optional: true
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ai-knowledge-base.fullname" . }}-secrets
+                  key: redis-password
+                  optional: true
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ai-knowledge-base.fullname" . }}-secrets
+                  key: postgres-password
+                  optional: true
+            - name: REDIS_HOST
+              value: {{ include "ai-knowledge-base.fullname" . }}-redis
+            - name: REDIS_PORT
+              value: "6379"
+            - name: QDRANT_HOST
+              value: {{ include "ai-knowledge-base.fullname" . }}-qdrant
+            - name: QDRANT_PORT
+              value: "6333"
+            - name: LOG_LEVEL
+              value: {{ .Values.backend.env.LOG_LEVEL | quote }}
+            - name: WORKERS
+              value: {{ .Values.backend.env.WORKERS | quote }}
+            - name: MAX_UPLOAD_SIZE
+              value: {{ .Values.backend.env.MAX_UPLOAD_SIZE | quote }}
+            - name: OPENAI_MODEL
+              value: {{ .Values.backend.env.OPENAI_MODEL | quote }}
+            - name: EMBEDDING_MODEL
+              value: {{ .Values.backend.env.EMBEDDING_MODEL | quote }}
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+            - name: models
+              mountPath: /app/models
+              readOnly: true
+      volumes:
+        - name: uploads
+          {{- if .Values.persistence.uploads.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "ai-knowledge-base.fullname" . }}-uploads
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: models
+          {{- if .Values.persistence.models.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "ai-knowledge-base.fullname" . }}-models
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+---
+
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ai-knowledge-base.fullname" . }}-frontend
+  labels:
+    {{- include "ai-knowledge-base.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ai-knowledge-base.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        {{- include "ai-knowledge-base.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: frontend
+          image: {{ .Values.global.imageRegistry }}/{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}

@@ -1,0 +1,49 @@
+{{- /*
+Ingress - 统一入口
+*/ -}}
+{{- if .Values.ingress-nginx.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ai-knowledge-base.fullname" . }}
+  labels:
+    {{- include "ai-knowledge-base.labels" . | nindent 4 }}
+  annotations:
+    {{- with .Values.backend.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: {{ .Values.backend.ingress.className | quote }}
+  {{- if .Values.backend.ingress.tls }}
+  tls:
+    {{- range .Values.backend.ingress.hosts }}
+    - hosts:
+        - {{ .host | quote }}
+      secretName: {{ include "ai-knowledge-base.fullname" $ }}-tls
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.backend.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          # API 路由 -> Backend
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ include "ai-knowledge-base.fullname" $ }}-backend
+                port:
+                  number: 8000
+          # 前端 -> Frontend
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "ai-knowledge-base.fullname" $ }}-frontend
+                port:
+                  number: 80
+    {{- end }}
+{{- end }}
