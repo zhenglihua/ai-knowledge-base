@@ -21,7 +21,7 @@ import { SearchHighlight } from '../components/SearchHighlight';
 
 const { Title, Text, Paragraph } = Typography;
 const { Search } = Input;
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = 'http://localhost:8888/api';
 
 const SearchPage: React.FC = () => {
   const navigate = useNavigate();

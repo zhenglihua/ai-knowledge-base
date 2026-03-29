@@ -12,8 +12,8 @@ from dataclasses import dataclass
 @dataclass
 class RAGFlowConfig:
     """RAGFlow 配置"""
-    base_url: str = "http://localhost:9380"
-    api_token: str = ""  # API Token (Bearer token)
+    base_url: str = "http://localhost:9380"  # 改为9380端口（RAGFlow HTTP API）
+    api_token: str = "ragflow-FiZmRiODA4MmFiZDExZjE5ZjU5NzI1MW"  # API Token (Bearer token)
     timeout: int = 60
 
 
@@ -52,9 +52,10 @@ class RAGFlowService:
         return self._request("DELETE", path, **kwargs)
 
     def health_check(self) -> bool:
-        """健康检查"""
+        """健康检查 - 使用 token 认证的 API"""
         try:
-            result = self.get("/v1/system/status")
+            # 使用 /api/v1/datasets (token 认证) 而非 /v1/system/status (session 认证)
+            result = self.get("/api/v1/datasets")
             return result.get("code") == 0
         except:
             return False
@@ -124,13 +125,54 @@ class RAGFlowService:
         return []
 
     def chat(self, dataset_ids: List[str], query: str, top_k: int = 5) -> Dict:
-        """RAG 对话"""
-        result = self.post("/api/v1/chat", json={
+        """RAG 对话 - 使用原生API实现"""
+        import time
+        
+        # 1. 创建chat
+        create_result = self.post("/api/v1/chats", json={
+            "name": f"chat_{int(time.time())}",
             "dataset_ids": dataset_ids,
-            "question": query,
             "top_k": top_k
         })
-        return result
+        
+        if create_result.get("code") != 0:
+            return {"code": 100, "message": f"创建chat失败: {create_result.get('message')}"}
+        
+        chat_id = create_result.get("data", {}).get("id")
+        if not chat_id:
+            return {"code": 100, "message": "创建chat成功但未返回chat_id"}
+        
+        # 2. 发送消息 - 使用 /chats/{chat_id}/completions
+        message_result = self.post(
+            f"/api/v1/chats/{chat_id}/completions",
+            json={"question": query, "stream": False}
+        )
+        
+        if message_result.get("code") != 0:
+            return {"code": 100, "message": f"发送消息失败: {message_result.get('message')}"}
+        
+        data = message_result.get("data", {})
+        answer_content = ""
+        references = []
+        
+        if isinstance(data, dict):
+            # 解析消息内容 - data是最终答案
+            answer_content = data.get("answer", "")
+            
+            # 尝试获取引用
+            if "reference" in data:
+                references = data.get("reference", [])
+        
+        if not answer_content:
+            answer_content = str(data)
+        
+        return {
+            "code": 0,
+            "data": {
+                "answer": answer_content,
+                "reference": references
+            }
+        }
 
 
 def create_api_token(tenant_id: str, token: str = None) -> str:
@@ -168,8 +210,9 @@ def get_ragflow_service(api_token: str = None) -> RAGFlowService:
     """获取 RAGFlow 服务实例"""
     global _ragflow_service
     
-    if _ragflow_service is None or api_token:
-        config = RAGFlowConfig(api_token=api_token)
+    # 如果传入了 api_token，或者还没有初始化，则创建新实例
+    if api_token or _ragflow_service is None:
+        config = RAGFlowConfig(api_token=api_token) if api_token else RAGFlowConfig()
         _ragflow_service = RAGFlowService(config)
     
     return _ragflow_service

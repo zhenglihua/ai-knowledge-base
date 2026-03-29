@@ -15,6 +15,7 @@ from models.database import get_db, Conversation, ChatMessage, UserActivity
 from services.rag_service import EnhancedRAGService, EnhancedVectorStore
 from services.ai_service import AIService
 from services.vector_store import VectorStore
+from services.integration.ragflow_client import get_ragflow_service
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 
@@ -52,6 +53,10 @@ class MessageResponse(BaseModel):
 vector_store = EnhancedVectorStore()
 ai_service = AIService()
 rag_service = EnhancedRAGService(vector_store, ai_service)
+ragflow_service = get_ragflow_service()
+
+# 默认使用 AI知识库 数据集
+DEFAULT_DATASET_IDS = ["fb6027c82b0411f190880e97cf935568"]
 
 def get_or_create_conversation(db: Session, conversation_id: Optional[str], user_id: str = "anonymous"):
     """获取或创建对话"""
@@ -262,8 +267,24 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
     )
     db.add(user_message)
     
-    # 生成回答
-    result = rag_service.chat(request.query, chat_history)
+    # 生成回答 - 使用 RAGFlow
+    try:
+        ragflow_result = ragflow_service.chat(DEFAULT_DATASET_IDS, request.query, top_k=5)
+        if ragflow_result.get("code") == 0:
+            raw_answer = ragflow_result.get("data", {}).get("answer", "")
+            # 清理RAGFlow原始标记（如 ##0$$）
+            import re
+            clean_answer = re.sub(r'##\d+\$\$', '', raw_answer).strip()
+            result = {
+                'answer': clean_answer,
+                'sources': ragflow_result.get("data", {}).get("reference", [])
+            }
+        else:
+            # RAGFlow 失败时降级到本地 RAG
+            result = rag_service.chat(request.query, chat_history)
+    except Exception as e:
+        # 异常时降级到本地 RAG
+        result = rag_service.chat(request.query, chat_history)
     
     latency_ms = int((time.time() - start_time) * 1000)
     
@@ -338,12 +359,26 @@ def chat_stream(request: ChatRequest, db: Session = Depends(get_db)):
         # 首先发送消息ID
         yield f"data: {json.dumps({'type': 'start', 'message_id': message_id}, ensure_ascii=False)}\n\n"
         
-        # 检索相关文档
-        context = rag_service.retrieve(request.query)
-        
-        # 模拟流式生成（使用本地模式分词）
-        answer = result = rag_service.generate_answer(request.query, context)
-        answer_text = answer['answer']
+        # 使用 RAGFlow 生成回答
+        try:
+            import traceback
+            print(f"[DEBUG] calling ragflow_service.chat with {DEFAULT_DATASET_IDS}, query={request.query[:20]}...")
+            ragflow_result = ragflow_service.chat(DEFAULT_DATASET_IDS, request.query, top_k=5)
+            print(f"[DEBUG] ragflow_result code={ragflow_result.get('code')}")
+            if ragflow_result.get("code") == 0:
+                answer_text = ragflow_result.get("data", {}).get("answer", "")
+                # 清理RAGFlow原始标记（如 ##0$$）
+                import re
+                answer_text = re.sub(r'##\d+\$\$', '', answer_text).strip()
+                references = ragflow_result.get("data", {}).get("reference", {})
+            else:
+                answer_text = f"RAGFlow错误: {ragflow_result.get('message', '未知错误')}"
+                references = {}
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            answer_text = f"错误: {str(e)}"
+            references = {}
         
         # 按句子分割并流式发送
         import re
@@ -364,7 +399,7 @@ def chat_stream(request: ChatRequest, db: Session = Depends(get_db)):
             conversation_id=conv.id,
             role="assistant",
             content=full_answer,
-            sources=json.dumps(answer.get('sources', []), ensure_ascii=False),
+            sources=json.dumps(references if isinstance(references, list) else [], ensure_ascii=False),
             latency_ms=latency_ms
         )
         
@@ -388,7 +423,7 @@ def chat_stream(request: ChatRequest, db: Session = Depends(get_db)):
         end_data = json.dumps({
             'type': 'end',
             'message_id': message_id,
-            'sources': answer.get('sources', []),
+            'sources': references if isinstance(references, list) else [],
             'latency_ms': latency_ms
         }, ensure_ascii=False)
         yield f"data: {end_data}\n\n"

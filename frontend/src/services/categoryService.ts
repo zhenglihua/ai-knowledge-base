@@ -2,7 +2,7 @@
 
 import { message } from 'antd';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = 'http://localhost:8888/api';
 
 // 分类相关类型
 export interface Category {

@@ -20,7 +20,7 @@ import {
   mockRecommendations,
 } from '../data/mockKnowledgeGraph';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = 'http://localhost:8888/api';
 
 /**
  * 知识图谱服务

@@ -23,10 +23,12 @@ from services.document_parser import DocumentParser
 from services.vector_store import VectorStore
 from services.ai_service import AIService
 from services.rag_service import EnhancedRAGService, EnhancedVectorStore
+from services.integration.ragflow_client import get_ragflow_service
 from services.classification_service import analyze_document, classify_document
 
 # 导入API路由
 from api import conversations, stats, ocr, categories, auth, users, audit, auth_management
+from api.ragflow_api import router as ragflow_router
 from kg_module.api import routes as kg_routes
 from cim_module import cim_router, dashboard_router
 
@@ -90,6 +92,7 @@ app.include_router(audit.router)
 app.include_router(kg_routes.router)
 app.include_router(cim_router)
 app.include_router(dashboard_router)
+app.include_router(ragflow_router)  # RAGFlow 集成
 
 # 初始化服务
 parser = DocumentParser()
@@ -452,11 +455,25 @@ def chat_stream(request: ChatRequest, db: Session = Depends(get_db)):
         # 发送开始标记
         yield f"data: {json.dumps({'type': 'start', 'message_id': message_id}, ensure_ascii=False)}\n\n"
         
-        # 检索和生成
+        # 检索和生成 - 使用 RAGFlow
         try:
-            result = app.state.rag_service.chat(request.query)
-            answer_text = result['answer']
-            sources = result.get('sources', [])
+            ragflow_svc = get_ragflow_service()
+            ragflow_result = ragflow_svc.chat(
+                ["fb6027c82b0411f190880e97cf935568"],  # 默认数据集
+                request.query,
+                top_k=5
+            )
+            if ragflow_result.get("code") == 0:
+                answer_text = ragflow_result.get("data", {}).get("answer", "")
+                # 清理RAGFlow原始标记（如 ##0$$）
+                import re
+                answer_text = re.sub(r'##\d+\$\$', '', answer_text).strip()
+                reference = ragflow_result.get("data", {}).get("reference", {})
+                sources = reference.get("chunks", []) if isinstance(reference, dict) else []
+            else:
+                answer_text = f"RAGFlow错误: {ragflow_result.get('message', '未知错误')}"
+                sources = []
+            result = {'answer': answer_text, 'sources': sources}
             
             # 按句子分割
             import re

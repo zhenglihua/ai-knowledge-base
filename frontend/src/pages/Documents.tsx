@@ -25,7 +25,7 @@ import { BatchUpload } from '../components/BatchUpload';
 const { Title, Text } = Typography;
 const { Search } = Input;
 const { Option } = Select;
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = 'http://localhost:8888/api';
 
 // 文件类型图标映射
 const getFileIcon = (type: string) => {

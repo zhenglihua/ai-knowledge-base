@@ -22,7 +22,7 @@ import axios from 'axios';
 import '../styles/global.css';
 
 const { Title, Text, Paragraph } = Typography;
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = 'http://localhost:8888/api';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();

@@ -13,7 +13,7 @@ import axios from 'axios';
 const { Title, Text, Paragraph } = Typography;
 const { Search } = Input;
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = 'http://localhost:8888/api';
 
 export interface ChatHistory {
   id: string;

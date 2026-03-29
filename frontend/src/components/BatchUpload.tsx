@@ -56,7 +56,7 @@ export const BatchUpload: React.FC<BatchUploadProps> = ({
 }) => {
   const [fileList, setFileList] = useState<FileItem[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const API_BASE = 'http://localhost:8000/api';
+  const API_BASE = 'http://localhost:8888/api';
 
   const handleFileSelect = useCallback((info: any) => {
     const files = info.fileList as UploadFile[];
