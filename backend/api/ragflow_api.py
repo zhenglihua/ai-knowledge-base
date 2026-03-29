@@ -13,6 +13,7 @@ from services.integration import (
     get_ragflow_service,
     is_ragflow_available
 )
+from services.document_summary_service import get_summary_service
 
 
 router = APIRouter(prefix="/api/ragflow", tags=["RAGFlow专业RAG"])
@@ -321,6 +322,184 @@ async def process_document(
         finally:
             os.unlink(tmp_path)
             
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========== 文档摘要 ==========
+
+class GenerateSummaryRequest(BaseModel):
+    """生成摘要请求"""
+    dataset_id: str
+    document_id: str
+
+
+@router.post("/documents/{document_id}/summary")
+async def generate_document_summary(
+    document_id: str,
+    dataset_id: str
+):
+    """
+    为已上传的文档生成摘要卡片
+
+    摘要包含：
+    - 文档摘要（100-150字）
+    - 主要章节列表
+    - 关键工艺参数
+    - 关键设备列表
+    - 安全注意事项
+    - 文档标签
+    """
+    try:
+        service = get_ragflow_service()
+
+        # 获取文档信息
+        docs = service.list_documents(dataset_id)
+        doc_info = None
+        for d in docs:
+            if d.get('id') == document_id:
+                doc_info = d
+                break
+
+        if not doc_info:
+            raise HTTPException(status_code=404, detail="文档未找到")
+
+        filename = doc_info.get('name', '')
+
+        # 获取文档内容（RAGFlow检索或本地文件）
+        # 优先尝试从 RAGFlow 检索摘要片段
+        try:
+            retrieval = service.retrievals(
+                dataset_ids=[dataset_id],
+                query="文档摘要和关键内容",
+                top_k=3
+            )
+            context = "\n".join([r.get('chunk', {}).get('content', '') for r in retrieval[:3] if isinstance(r, dict)])
+        except:
+            context = ""
+
+        # 生成摘要
+        summary_svc = get_summary_service()
+
+        # 对于 RAGFlow 中的文档，我们尝试用检索到的内容生成摘要
+        if context:
+            from services.ai_service import get_ai_service
+            ai = get_ai_service()
+
+            prompt = f"""你是一个专业的半导体工艺文档分析助手。请为以下文档生成一个简明摘要。
+
+文档名称：{filename}
+
+文档内容：
+{context[:3000]}
+
+请按以下JSON格式输出摘要（只输出JSON，不要其他内容）：
+{{
+    "brief_summary": "100-150字的中文摘要，说明文档的核心内容和目的",
+    "main_topics": ["主题1", "主题2", "主题3"],
+    "difficulty_level": "基础/进阶/高级",
+    "target_audience": "目标读者"
+}}"""
+
+            try:
+                result = ai.generate_answer(prompt)
+                import json as _json
+                if "{" in result and "}" in result:
+                    json_str = result[result.index("{"):result.rindex("}")+1]
+                    data = _json.loads(json_str)
+
+                    return {
+                        "success": True,
+                        "doc_id": document_id,
+                        "filename": filename,
+                        "summary": data.get('brief_summary', ''),
+                        "main_topics": data.get('main_topics', []),
+                        "difficulty_level": data.get('difficulty_level', '未知'),
+                        "target_audience": data.get('target_audience', ''),
+                        "source": "ragflow_retrieval"
+                    }
+            except Exception as e:
+                pass
+
+        # Fallback：返回基本信息
+        return {
+            "success": True,
+            "doc_id": document_id,
+            "filename": filename,
+            "summary": f"文档 {filename} 已上传至RAGFlow，可在RAGFlow界面中查看解析进度和内容摘要。",
+            "main_topics": [],
+            "difficulty_level": "未知",
+            "target_audience": "半导体工程师",
+            "source": "fallback",
+            "note": "建议在RAGFlow中完成文档解析后再生成完整摘要"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/process-with-summary")
+async def process_document_with_summary(
+    request: ProcessDocumentRequest,
+):
+    """
+    一站式文档处理（含自动摘要）
+
+    1. 创建/获取数据集
+    2. 上传文档
+    3. 自动生成摘要卡片
+    4. 返回结果
+    """
+    try:
+        service = get_ragflow_service()
+
+        # 1. 获取或创建数据集
+        datasets = service.list_datasets()
+        dataset_id = None
+        for d in datasets:
+            if d.get("name") == request.dataset_name:
+                dataset_id = d.get("id")
+                break
+
+        if not dataset_id:
+            result = service.create_dataset(name=request.dataset_name)
+            if result.get("code") == 0:
+                dataset_id = result.get("data", {}).get("id")
+
+        if not dataset_id:
+            raise HTTPException(status_code=500, detail="创建数据集失败")
+
+        # 2. 保存上传文件（临时，用于摘要生成）
+        with tempfile.NamedTemporaryFile(delete=False, suffix=request.file.filename) as tmp:
+            content = await request.file.read()
+            tmp.write(content)
+            tmp_path = tmp.name
+            tmp_filename = request.file.filename
+
+        try:
+            # 3. 生成摘要（先于上传，因为文件在本地）
+            summary_svc = get_summary_service()
+            summary_card = summary_svc.generate_summary(tmp_path, tmp_filename)
+
+            # 4. 上传文档到 RAGFlow
+            upload_result = service.upload_document(
+                dataset_id, tmp_path, request.chunk_method
+            )
+
+            return {
+                "success": upload_result.get("code") == 0,
+                "dataset_id": dataset_id,
+                "document": upload_result.get("data"),
+                "summary": summary_card.to_dict(),
+                "message": "文档上传成功，摘要已自动生成"
+            }
+        finally:
+            os.unlink(tmp_path)
+
     except HTTPException:
         raise
     except Exception as e:
