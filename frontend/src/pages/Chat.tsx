@@ -27,7 +27,7 @@ import ChatHistoryList, { ChatHistory } from '../components/ChatHistoryList';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = 'http://localhost:8888/api';
 
 interface Message {
   id: string;
@@ -180,9 +180,11 @@ const Chat: React.FC = () => {
     inputRef.current?.focus();
   };
 
-  const handleStreamRequest = async (query: string) => {
-    setIsStreaming(true);
-    setStreamingMessage('');
+  const handleStreamRequest = async (
+    query: string,
+    onChunk: (text: string, sources: any[]) => void,
+    onDone: (fullText: string, sources: any[]) => void
+  ) => {
     abortControllerRef.current = new AbortController();
 
     try {
@@ -202,6 +204,7 @@ const Chat: React.FC = () => {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let fullText = '';
+      let sources: any[] = [];
 
       if (reader) {
         while (true) {
@@ -219,9 +222,12 @@ const Chat: React.FC = () => {
               }
               try {
                 const parsed = JSON.parse(data);
-                if (parsed.content) {
-                  fullText += parsed.content;
-                  setStreamingMessage(fullText);
+                if (parsed.type === 'content' && parsed.text) {
+                  fullText += parsed.text;
+                  onChunk(fullText, sources);
+                } else if (parsed.type === 'end') {
+                  sources = parsed.sources || [];
+                  onDone(fullText, sources);
                 }
               } catch (e) {
                 // 忽略解析错误
@@ -234,7 +240,7 @@ const Chat: React.FC = () => {
       return fullText;
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        return streamingMessage || '已取消生成';
+        return;
       }
       throw error;
     } finally {
@@ -243,41 +249,40 @@ const Chat: React.FC = () => {
     }
   };
 
-  const simulateStream = async (query: string): Promise<string> => {
-    return new Promise((resolve) => {
-      setIsStreaming(true);
-      
-      const responses: Record<string, string> = {
-        '光刻机故障E-203怎么处理？': `根据知识库资料：\n\n1. 首先检查光刻机冷却系统，确保冷却液循环正常\n2. 检查激光器功率输出，确认在额定范围内\n3. 清洁光学镜片，排除污染导致的能量损失\n4. 如果问题持续，请联系设备厂商技术支持\n\n（注：具体操作建议参考设备维护手册第3.2节）`,
-        '什么是CVD工艺？': `CVD（化学气相沉积）是一种重要的薄膜制备工艺：\n\n1. 原理：通过气相化学反应在衬底表面沉积薄膜\n2. 主要类型：APCVD、LPCVD、PECVD等\n3. 应用：广泛用于制备氧化硅、氮化硅、多晶硅等薄膜\n4. 优势：沉积均匀性好、台阶覆盖优良\n\n如需了解更多工艺参数，请查阅工艺文档。`,
-        '半导体制造的主要步骤有哪些？': `半导体制造主要包括以下步骤：\n\n1. 晶圆制备 - 单晶硅生长、切割、抛光\n2. 氧化 - 形成SiO2绝缘层\n3. 光刻 - 图形转移\n4. 刻蚀 - 选择性去除材料\n5. 离子注入 - 掺杂形成PN结\n6. 薄膜沉积 - CVD、PVD等\n7. 金属化 - 形成互连\n8. 测试封装 - 最终检验\n\n每个步骤都有严格的工艺控制要求。`,
-        '如何优化离子注入参数？': `离子注入参数优化建议：\n\n1. 能量选择 - 根据目标结深确定注入能量\n2. 剂量控制 - 精确控制掺杂浓度\n3. 角度优化 - 考虑沟道效应，通常选择7°倾斜\n4. 温度控制 - 高温注入可减少缺陷\n5. 退火处理 - 注入后需进行热退火激活\n\n具体参数需要结合实际工艺要求调整。`
-      };
+  const simulateStream = async (
+    query: string,
+    onChunk: (text: string, sources: any[]) => void,
+    onDone: (text: string, sources: any[]) => void
+  ): Promise<void> => {
+    const responses: Record<string, string> = {
+      '光刻机故障E-203怎么处理？': `根据知识库资料：\n\n1. 首先检查光刻机冷却系统，确保冷却液循环正常\n2. 检查激光器功率输出，确认在额定范围内\n3. 清洁光学镜片，排除污染导致的能量损失\n4. 如果问题持续，请联系设备厂商技术支持\n\n（注：具体操作建议参考设备维护手册第3.2节）`,
+      '什么是CVD工艺？': `CVD（化学气相沉积）是一种重要的薄膜制备工艺：\n\n1. 原理：通过气相化学反应在衬底表面沉积薄膜\n2. 主要类型：APCVD、LPCVD、PECVD等\n3. 应用：广泛用于制备氧化硅、氮化硅、多晶硅等薄膜\n4. 优势：沉积均匀性好、台阶覆盖优良\n\n如需了解更多工艺参数，请查阅工艺文档。`,
+      '半导体制造的主要步骤有哪些？': `半导体制造主要包括以下步骤：\n\n1. 晶圆制备 - 单晶硅生长、切割、抛光\n2. 氧化 - 形成SiO2绝缘层\n3. 光刻 - 图形转移\n4. 刻蚀 - 选择性去除材料\n5. 离子注入 - 掺杂形成PN结\n6. 薄膜沉积 - CVD、PVD等\n7. 金属化 - 形成互连\n8. 测试封装 - 最终检验\n\n每个步骤都有严格的工艺控制要求。`,
+      '如何优化离子注入参数？': `离子注入参数优化建议：\n\n1. 能量选择 - 根据目标结深确定注入能量\n2. 剂量控制 - 精确控制掺杂浓度\n3. 角度优化 - 考虑沟道效应，通常选择7°倾斜\n4. 温度控制 - 高温注入可减少缺陷\n5. 退火处理 - 注入后需进行热退火激活\n\n具体参数需要结合实际工艺要求调整。`
+    };
 
-      const response = responses[query] || `根据知识库资料，关于"${query}"的相关信息如下：\n\n1. 这是一个重要的技术问题，需要从多个角度分析\n2. 建议参考相关的工艺文档和设备手册\n3. 如需更详细的解答，请提供更具体的上下文\n\n您可以继续提问，我会尽力为您解答。`;
+    const response = responses[query] || `根据知识库资料，关于"${query}"的相关信息如下：\n\n1. 这是一个重要的技术问题，需要从多个角度分析\n2. 建议参考相关的工艺文档和设备手册\n3. 如需更详细的解答，请提供更具体的上下文\n\n您可以继续提问，我会尽力为您解答。`;
 
-      let index = 0;
-      let currentText = '';
+    let index = 0;
+    let currentText = '';
 
-      const interval = setInterval(() => {
-        if (index < response.length) {
-          currentText += response[index];
-          setStreamingMessage(currentText);
-          index++;
-        } else {
-          clearInterval(interval);
-          setIsStreaming(false);
-          resolve(response);
-        }
-      }, 15);
+    const interval = setInterval(() => {
+      if (index < response.length) {
+        currentText += response[index];
+        onChunk(currentText, []);
+        index++;
+      } else {
+        clearInterval(interval);
+        onDone(currentText, []);
+      }
+    }, 15);
 
-      (abortControllerRef as any).current = {
-        abort: () => {
-          clearInterval(interval);
-          setIsStreaming(false);
-        }
-      };
-    });
+    abortControllerRef.current = {
+      abort: () => {
+        clearInterval(interval);
+        onDone(currentText, []);
+      }
+    } as AbortController;
   };
 
   const handleSend = async (question?: string) => {
@@ -293,38 +298,66 @@ const Chat: React.FC = () => {
 
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
-    
+
     if (!question) setInput('');
     setLoading(true);
+    setIsStreaming(true);
+
+    // Add assistant message immediately (empty, streaming)
+    const assistantMsgId = (Date.now() + 1).toString();
+    const assistantMsg: Message = {
+      id: assistantMsgId,
+      role: 'assistant',
+      content: '',
+      sources: [],
+      timestamp: new Date(),
+      isStreaming: true
+    };
+    setMessages(prev => [...prev, assistantMsg]);
+
+    const updateStreamingMessage = (content: string, sources: any[] = []) => {
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === assistantMsgId
+            ? { ...m, content, sources, isStreaming: true }
+            : m
+        )
+      );
+      scrollToBottom();
+    };
+
+    const finalizeStreamingMessage = (content: string, sources: any[] = []) => {
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === assistantMsgId
+            ? { ...m, content, sources, isStreaming: false }
+            : m
+        )
+      );
+      saveToHistory([...newMessages, { ...assistantMsg, content, sources, isStreaming: false }], currentChatId);
+    };
 
     try {
-      let answer: string;
       try {
-        answer = await handleStreamRequest(query);
+        await handleStreamRequest(
+          query,
+          (text, sources) => updateStreamingMessage(text, sources),
+          (text, sources) => finalizeStreamingMessage(text, sources)
+        );
       } catch {
-        answer = await simulateStream(query);
+        await simulateStream(query, updateStreamingMessage, finalizeStreamingMessage);
       }
-
-      const assistantMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: answer,
-        sources: [{ title: '半导体工艺手册.pdf' }],
-        timestamp: new Date()
-      };
-
-      const finalMessages = [...newMessages, assistantMsg];
-      setMessages(finalMessages);
-      saveToHistory(finalMessages, currentChatId);
     } catch (e) {
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: '抱歉，服务暂时不可用，请稍后重试。',
-        timestamp: new Date()
-      }]);
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === assistantMsgId
+            ? { ...m, content: '抱歉，服务暂时不可用，请稍后重试。', isStreaming: false }
+            : m
+        )
+      );
     } finally {
       setLoading(false);
+      setIsStreaming(false);
       setStreamingMessage('');
     }
   };
@@ -349,18 +382,23 @@ const Chat: React.FC = () => {
   const renderMessageContent = (msg: Message) => {
     if (msg.role === 'assistant') {
       const lines = msg.content.split('\n');
-      return lines.map((line, index) => {
-        if (line.startsWith('根据知识库资料：')) {
-          return <div key={index} style={{ marginBottom: 12, fontWeight: 500 }}>{line}</div>;
-        }
-        if (/^\d+\./.test(line)) {
-          return <div key={index} style={{ marginLeft: 8, marginBottom: 8 }}>{line}</div>;
-        }
-        if (line.startsWith('（注：')) {
-          return <div key={index} style={{ fontSize: 12, color: '#8c8c8c', marginTop: 12 }}>{line}</div>;
-        }
-        return <div key={index} style={{ marginBottom: 4 }}>{line}</div>;
-      });
+      return (
+        <>
+          {lines.map((line, index) => {
+            if (line.startsWith('根据知识库资料：')) {
+              return <div key={index} style={{ marginBottom: 12, fontWeight: 500 }}>{line}</div>;
+            }
+            if (/^\d+\./.test(line)) {
+              return <div key={index} style={{ marginLeft: 8, marginBottom: 8 }}>{line}</div>;
+            }
+            if (line.startsWith('（注：')) {
+              return <div key={index} style={{ fontSize: 12, color: '#8c8c8c', marginTop: 12 }}>{line}</div>;
+            }
+            return <div key={index} style={{ marginBottom: 4 }}>{line}</div>;
+          })}
+          {msg.isStreaming && <span className="streaming-cursor" />}
+        </>
+      );
     }
     return msg.content;
   };
@@ -541,11 +579,11 @@ const Chat: React.FC = () => {
                           </Space>
                         )}
                         
-                        {msg.role === 'assistant' && (
+                        {msg.role === 'assistant' && !msg.isStreaming && (
                           <>
                             <Divider type="vertical" />
                             <Tooltip title="复制">
-                              <CopyOutlined 
+                              <CopyOutlined
                                 style={{ cursor: 'pointer' }}
                                 onClick={() => copyToClipboard(msg.content)}
                               />
@@ -555,9 +593,26 @@ const Chat: React.FC = () => {
                             </Tooltip>
                           </>
                         )}
+
+                        {msg.isStreaming && (
+                          <>
+                            <Divider type="vertical" />
+                            <Spin size="small" />
+                            <Text type="secondary" style={{ fontSize: 11 }}>正在生成回复...</Text>
+                            <Button
+                              type="link"
+                              size="small"
+                              icon={<PauseCircleOutlined />}
+                              onClick={handleCancelStream}
+                              style={{ padding: 0, height: 'auto' }}
+                            >
+                              停止
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
-                    
+
                     {msg.role === 'user' && (
                       <Avatar
                         size={36}
@@ -569,62 +624,6 @@ const Chat: React.FC = () => {
                 </List.Item>
               )}
             />
-          )}
-          
-          {isStreaming && streamingMessage && (
-            <List.Item style={{ border: 'none', padding: '12px 0' }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'flex-start',
-                width: '100%',
-                gap: 12
-              }}
-              >
-                <Avatar
-                  size={36}
-                  icon={<RobotFilled />}
-                  style={{ backgroundColor: '#1677ff', flexShrink: 0 }}
-                />
-                <div style={{ maxWidth: '75%' }}>
-                  <div
-                    style={{
-                      padding: '12px 16px',
-                      borderRadius: '16px 16px 16px 4px',
-                      background: '#fff',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                      fontSize: 14,
-                      lineHeight: 1.6
-                    }}
-                  >
-                    <StreamingText 
-                      text={streamingMessage} 
-                      isStreaming={true}
-                    />
-                  </div>
-                  <div style={{ 
-                    marginTop: 6, 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 8,
-                    fontSize: 12,
-                    color: '#8c8c8c'
-                  }}
-                  >
-                    <Spin size="small" />
-                    <Text type="secondary">AI正在思考...</Text>
-                    <Button
-                      type="link"
-                      size="small"
-                      icon={<PauseCircleOutlined />}
-                      onClick={handleCancelStream}
-                      style={{ padding: 0, height: 'auto' }}
-                    >
-                      停止生成
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </List.Item>
           )}
           
           <div ref={messagesEndRef} />
