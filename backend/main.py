@@ -544,5 +544,53 @@ def delete_document(doc_id: str, db: Session = Depends(get_db)):
     
     return {"message": "删除成功", "id": doc_id}
 
+# ========== 新增：表格解析与参数提取 ==========
+
+class TableParseRequest(BaseModel):
+    file_path: str
+    filename: str
+
+class ParamExtractRequest(BaseModel):
+    file_path: str
+    filename: str
+
+@app.post("/api/documents/parse-tables")
+async def parse_tables(request: TableParseRequest):
+    """
+    解析文档中的表格
+    支持Excel(.xlsx/.xls)和PDF文件
+    """
+    try:
+        parser = DocumentParser()
+        result = parser.parse_with_tables(request.file_path, request.filename)
+        
+        return {
+            "success": True,
+            "text": result['text'][:5000] if result['text'] else "",
+            "tables": result['tables'],
+            "table_count": len(result['tables']),
+            "metadata": result['metadata']
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/documents/extract-params")
+async def extract_params(request: ParamExtractRequest):
+    """
+    从工艺参数文档中提取结构化参数
+    返回: [{param_name, value, unit, param_type, source}]
+    """
+    try:
+        parser = DocumentParser()
+        params = parser.extract_params(request.file_path, request.filename)
+        
+        return {
+            "success": True,
+            "params": params,
+            "param_count": len(params)
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
